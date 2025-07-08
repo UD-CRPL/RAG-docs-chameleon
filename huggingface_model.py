@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
-from langchain_community.chat_models import ChatHuggingFace
-from langchain_community.llms import HuggingFaceEndpoint
+from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 
 load_dotenv()
 api_key = os.environ.get("HUGGINGFACEHUB_API_TOKEN")
@@ -20,3 +19,7 @@ llm = HuggingFaceEndpoint(
 )
 
 chat_model = ChatHuggingFace(llm=llm)
+
+response = chat_model.invoke("What is the capital of France?")
+print(response)
+

@@ -1,1 +1,4 @@
-.env 
+.env
+
+# Ignore virtual env
+rag_env/ 
