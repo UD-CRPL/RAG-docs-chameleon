@@ -10,16 +10,17 @@ text_splitter = RecursiveCharacterTextSplitter(chunk_size = 1000, chunk_overlap 
 chunks = text_splitter.split_documents(docs)
 print("Number of chunks: ", len(chunks))
 
-embeddings_model = HuggingFaceEmbeddings(model_name="NovaSearch/stella_en_1.5B_v5")
+embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 chunks_embedding = embeddings_model.embed_documents([chunks[0].page_content])
-chunks_embedding[0]
+#print(chunks_embedding[0])
+
 
 
 database = FAISS.from_documents(documents= chunks, embedding= embeddings_model)
 #check what this line is doing?
 database.index.ntotal
 
-query = ""
+query = "what is Chamelelon?"
 #k=3: top three related topics
 docs = database.similarity_search(query,k = 3)
 
@@ -33,7 +34,7 @@ for doc in docs:
 
 
 #save the vectore database
-database.save_local("vectore_db")
+#database.save_local("vectore_db")
 
 #loading the vectore database
-vectore_store = FAISS.load_local("vectore_db", embeddings_model)
+#vectore_store = FAISS.load_local("vectore_db", embeddings_model)
