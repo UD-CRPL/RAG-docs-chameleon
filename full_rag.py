@@ -7,64 +7,74 @@ from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 
-#for API key in .env
-load_dotenv()
+#load huggingface token from .env
+def load_token():    
+    load_dotenv()
+    api_key = os.environ.get("HUGGINGFACEHUB_API_TOKEN")
+    if not api_key: 
+        raise ValueError("HUGGINGFACEHUB_API_TOKEN is not set in the environment variables.")
+    return api_key
 
-api_key = os.environ.get("HUGGINGFACEHUB_API_TOKEN")
 
-if not api_key: 
-    raise ValueError("HUGGINGFACEHUB_API_TOKEN is not set in the environment variables.")
-
-
-
-#loading the source(FAQs)
-loader = WebBaseLoader(["https://chameleoncloud.org/learn/frequently-asked-questions/"])
-docs = loader.load()
+#load the source (FAQs)
+def load_docs():
+    loader = WebBaseLoader(["https://chameleoncloud.org/learn/frequently-asked-questions/"])
+    return loader.load()
 
 #splitting the texts
-text_splitter = RecursiveCharacterTextSplitter(chunk_size = 500, chunk_overlap = 200, separators= ["\n# ", "\n## ", "\n### ", "\n#### ", "\n", " ", ""])
-chunks = text_splitter.split_documents(docs)
+def split_docs(docs):
+    text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size = 500,
+            chunk_overlap = 200, 
+            separators= ["\n# ", "\n## ", "\n### ", "\n#### ", "\n", " ", ""]
+    )
+    return text_splitter.split_documents(docs)
 
-#openAI embedding model
-embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-database = FAISS.from_documents(documents= chunks, embedding= embeddings_model)
+#creating vectorstore using huggingface embedding model
+def create_vectorestore(chunks):
+    embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    return FAISS.from_documents(documents= chunks, embedding= embeddings_model)
 
-retriever = database.as_retriever()
 
-llm_endpoint = HuggingFaceEndpoint(
-    repo_id="deepseek-ai/DeepSeek-R1-0528",
-    task="conversational",
-    max_new_tokens=512,
-    do_sample=False,
-    repetition_penalty=1.03,
-    provider="auto",  # or explicitly set "fireworks-ai" if needed
-)
+def create_llm_chain():
+    llm_endpoint = HuggingFaceEndpoint(
+        repo_id="deepseek-ai/DeepSeek-R1-0528",
+        task="conversational",
+        max_new_tokens=512,
+        do_sample=False,
+        repetition_penalty=1.03,
+        provider="auto",  # or explicitly set "fireworks-ai" if needed
+    )
 
-chat_model = ChatHuggingFace(llm = llm_endpoint)
+    chat_model = ChatHuggingFace(llm = llm_endpoint)
 
-prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are an assistance that helps answer the questions about Chameleon Cloud documentations.Use the provided context to answer the questions. IMPORTANT: If you are unsure of the answer, say'I don't know' and do not make up the answer. Keep the answer short a maximum of 5 sentences and be percise."), 
-    ("user", "Question:{question}\nContext: {context}")
-    ])
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", "You are an assistance that helps answer the questions about Chameleon Cloud documentations.Use the provided context to answer the questions. IMPORTANT: If you are unsure of the answer, say'I don't know' and do not make up the answer. Keep the answer short a maximum of 5 sentences and be percise."), 
+        ("user", "Question:{question}\nContext: {context}")
+     ])
         
-chain = prompt | chat_model
+    return prompt | chat_model
 
 
-query ="What is Chameleon Cloud?"
+def main():
+    load_token()
+    docs = load_docs()
+    chunks = split_docs(docs)
+    print(f"Number of chunks: {len(chunks)}")
+    vectorstore = create_vectorestore(chunks)
+    retriever = vectorstore.as_retriever()
+    chain = create_llm_chain()
 
-#RAG
+    print("Type 'exit' to quit.")
+    while True: 
+        query = input("Please enter a question: ")
+        if query == "exit":
+            break
+        retrieved_docs= retriever.invoke(query)
+        context = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        response = chain.invoke({"question": query, "context": context})
+        print(response.content)
 
-#Retrieval
-docs = retriever.invoke(query)
-docs_content = "\n\n".join(doc.page_content for doc in docs) 
-
-# Augmented + Generation
-response = chain.invoke({
-    "question": query, 
-    "context": docs_content
-    })
-
-print(response.content)
-
-
+if __name__ == "__main__":
+    main()
 
