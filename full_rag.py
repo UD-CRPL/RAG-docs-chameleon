@@ -40,17 +40,16 @@ def create_vectorestore(chunks):
 def create_llm_chain():
     llm_endpoint = HuggingFaceEndpoint(
         repo_id="deepseek-ai/DeepSeek-R1-0528",
-        task="conversational",
+        task="text-generation",
         max_new_tokens=512,
         do_sample=False,
         repetition_penalty=1.03,
-        provider="auto",  # or explicitly set "fireworks-ai" if needed
     )
 
     chat_model = ChatHuggingFace(llm = llm_endpoint)
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an assistance that helps answer the questions about Chameleon Cloud documentations.Use the provided context to answer the questions. IMPORTANT: If you are unsure of the answer, say'I don't know' and do not make up the answer. Keep the answer short a maximum of 5 sentences and be percise."), 
+        ("system", "You are an assistance that helps answer the questions about Chameleon Cloud documentations.Use the provided context to answer the question directly and include a citation for the answer from the context provided. 'For example, this information comes from the FAQs and here is the link'.Do not include internal thoughts like '</think>'. IMPORTANT: If the answer is not clearly in the context, say'I don't know' and do not make up the answer. Keep the answer short a maximum of 5 sentences and be percise."), 
         ("user", "Question:{question}\nContext: {context}")
      ])
         
