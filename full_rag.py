@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+os.environ['USER_AGENT'] = 'myagent'
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -8,7 +9,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 
 #load huggingface token from .env
-def load_token():    
+def load_token():
     load_dotenv()
     api_key = os.environ.get("HUGGINGFACEHUB_API_TOKEN")
     if not api_key: 
@@ -65,6 +66,7 @@ def main():
     retriever = vectorstore.as_retriever()
     chain = create_llm_chain()
 
+    print("________________________________________________________________________________________________________________")
     print("Type 'exit' to quit.")
     while True: 
         query = input("Please enter a question: ")
