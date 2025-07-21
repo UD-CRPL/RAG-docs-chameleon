@@ -24,8 +24,8 @@ def load_docs():
 #splitting the texts
 def split_docs(docs):
     text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 900,
-            chunk_overlap = 200,
+            chunk_size = 1000,
+            chunk_overlap = 250,
             separators= ["\n## ", "\n### ", "\n#### ", "\n", " ", ""]
     )
     return  text_splitter.split_documents(docs)
@@ -46,7 +46,7 @@ def main():
     database = create_vectorstore(chunks)
     
     #Using a similarity search to see the top three matches.
-    query = "how to install python-chi ?"
+    query = "What are Reservations in Chameleon Cloud?"
     results = database.similarity_search(query, k=3)
 
     for i, res in enumerate(results):
