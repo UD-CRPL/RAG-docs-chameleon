@@ -35,11 +35,11 @@ def main():
     docs = load_docs()
     #print(docs)
     chunks = split_docs(docs)
-    #print(chunks)
+    print(f"Number of chunks: {len(chunks)}" )
     database = create_vectorstore(chunks)
     
     #Using a similarity search to see the top three matches.
-    query = "What is Chameleon Cloud?"
+    query = "What is an applicane?"
     results = database.similarity_search(query, k=3)
 
     for i, res in enumerate(results):
