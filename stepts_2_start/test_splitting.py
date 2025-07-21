@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 
 
 #load the source (FAQs)
@@ -21,12 +23,22 @@ def split_docs(docs):
     )
     return  text_splitter.split_documents(docs)
 
+
+#creating vectorstore
+def create_vectorstore(chunks):
+    embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    return FAISS.from_documents(documents= chunks, embedding= embeddings_model)
+
+
+
 def main():
     docs = load_docs()
     #print(docs)
     chunks = split_docs(docs)
     #print(chunks)
-
+    create_vectorstore(chunks)
+    print(create_vectorstore)
+"""
     for chunk in chunks:
         print(f"chunk {chunks.index(chunk)} size: {len(chunk.page_content)}\n")
 
@@ -64,6 +76,6 @@ def main():
     print("chunk 11: \n")
     print(chunks[10].page_content)
 
-
+"""
 if __name__ == "__main__":
     main()
