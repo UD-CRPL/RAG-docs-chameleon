@@ -4,7 +4,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 loader = WebBaseLoader(["https://chameleoncloud.org/learn/frequently-asked-questions/"])
 docs = loader.load()
-
+print(docs)
 
 text_splitter = RecursiveCharacterTextSplitter(chunk_size = 1000, chunk_overlap = 200, separators= ["\n# ", "\n## ", "\n### ", "\n#### ", "\n", " ", ""])
 chunks = text_splitter.split_documents(docs)
