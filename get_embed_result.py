@@ -1,5 +1,5 @@
 import json
-from rag_jinna import main
+from rag import main
 
 retriever, embed_model_name = main()
 
@@ -32,7 +32,7 @@ while count < 10:
     count +=1
 
 
-with open('res_jinna.json','w') as result_file:
+with open('res_mpnet.json','w') as result_file:
     json.dump(result, result_file, indent = 2)
 
 print(f"\n results save to json file")

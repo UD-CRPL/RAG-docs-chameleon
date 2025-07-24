@@ -74,37 +74,24 @@ def main():
     vectorstore = create_vectorstore(chunks)
     retriever = vectorstore.as_retriever()
     embed_model_name = "BAAI/bge-large-en"
-    return retriever, embed_model_name
-    #chain = create_llm_chain()
+    #return retriever, embed_model_name
+    chain = create_llm_chain()
     
-'''
-    print("chunk 30: \n")
-    print(chunks[29].page_content)
-    print("--------------------------------------------------------------------------------------------")
-    print("chunk 31: \n")
-    print(chunks[30].page_content)
-    print("--------------------------------------------------------------------------------------------")
-    print("chunk 32: \n")
-    print(chunks[31].page_content)
-    print("--------------------------------------------------------------------------------------------")
-    
-
     print("________________________________________________________________________________________________________________")
     print("Type 'exit' to quit.")
     while True: 
-        query = input("Please enter a question: ")
+        query = input("\n Please enter a question: ")
         if query == "exit":
             break
         retrieved_docs= retriever.invoke(query)
-        #context = "\n\n".join(doc.page_content for doc in retrieved_docs)
-        #response = chain.invoke({"question": query, "context": context})
+        context = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        response = chain.invoke({"question": query, "context": context})
         #print(response.content)
         #print(retrieved_docs)
         for i, doc in enumerate(retrieved_docs):
             print(f"\n================== Match {i+1} ===================")
             print(doc.page_content)
-           # print(f"Metadata: {doc.metadata}")
-'''
+            print(f"Metadata: {doc.metadata}")
 
 if __name__ == "__main__":
     main()
