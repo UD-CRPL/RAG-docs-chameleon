@@ -1,4 +1,7 @@
 import os
+import shutil
+#hide TensorFlow/XLA-related warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_community.document_loaders import WebBaseLoader
@@ -7,6 +10,12 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
+from loader import loader_docs
+import logging
+
+
+logging.getLogger("transformers.modeling_utils").setLevel(logging.ERROR)
+
 
 #load huggingface token from .env
 def load_token():
@@ -17,25 +26,30 @@ def load_token():
     return api_key
 
 
-#load the source (FAQs)
-def load_docs():
-    loader = WebBaseLoader(["https://chameleoncloud.org/learn/frequently-asked-questions/"])
-    return loader.load()
+#load the document
+loader_docs()
 
 #splitting the texts
 def split_docs(docs):
     text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 500,
-            chunk_overlap = 200, 
-            separators= ["\n# ", "\n## ", "\n### ", "\n#### ", "\n", " ", ""]
+            chunk_size = 2000,
+            chunk_overlap = 700, 
+            separators= ["\n### ", "\n#### ", "\n", " ", ""]
     )
     return text_splitter.split_documents(docs)
 
 #creating vectorstore using huggingface embedding model
-def create_vectorestore(chunks):
-    embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-    return FAISS.from_documents(documents= chunks, embedding= embeddings_model)
+def create_vectorstore(chunks, save_path="vect_store_faiss"):
+    if os.path.exists(save_path):
+        shutil.rmtree(save_path)
+        print(f'removed the old vectorstore at {save_path}')
 
+    embeddings_model = HuggingFaceEmbeddings(model_name="BAAI/bge-large-en")
+    vectorstore = FAISS.from_documents(documents= chunks, embedding= embeddings_model)
+    vectorstore.save_local(save_path)
+    print(f'new vectorstore saved at {save_path}')
+
+    return vectorstore
 
 def create_llm_chain():
     llm_endpoint = HuggingFaceEndpoint(
@@ -58,12 +72,26 @@ def create_llm_chain():
 
 def main():
     load_token()
-    docs = load_docs()
+    docs = loader_docs()
     chunks = split_docs(docs)
     print(f"Number of chunks: {len(chunks)}")
-    vectorstore = create_vectorestore(chunks)
+    vectorstore = create_vectorstore(chunks)
     retriever = vectorstore.as_retriever()
-    chain = create_llm_chain()
+    embed_model_name = "jinaai/jina-embeddings-v2-base-en"
+    return retriever, embed_model_name
+    #chain = create_llm_chain()
+    
+'''
+    print("chunk 30: \n")
+    print(chunks[29].page_content)
+    print("--------------------------------------------------------------------------------------------")
+    print("chunk 31: \n")
+    print(chunks[30].page_content)
+    print("--------------------------------------------------------------------------------------------")
+    print("chunk 32: \n")
+    print(chunks[31].page_content)
+    print("--------------------------------------------------------------------------------------------")
+    
 
     print("________________________________________________________________________________________________________________")
     print("Type 'exit' to quit.")
@@ -72,9 +100,15 @@ def main():
         if query == "exit":
             break
         retrieved_docs= retriever.invoke(query)
-        context = "\n\n".join(doc.page_content for doc in retrieved_docs)
-        response = chain.invoke({"question": query, "context": context})
-        print(response.content)
+        #context = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        #response = chain.invoke({"question": query, "context": context})
+        #print(response.content)
+        #print(retrieved_docs)
+        for i, doc in enumerate(retrieved_docs):
+            print(f"\n================== Match {i+1} ===================")
+            print(doc.page_content)
+           # print(f"Metadata: {doc.metadata}")
+'''
 
 if __name__ == "__main__":
     main()
