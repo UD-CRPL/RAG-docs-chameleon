@@ -1,7 +1,5 @@
 import os
 import shutil
-#hide TensorFlow/XLA-related warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_community.document_loaders import WebBaseLoader
@@ -11,6 +9,7 @@ from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate
 from loader import loader_docs
+from langchain_ollama import ChatOllama
 
 
 #load huggingface token from .env
@@ -34,6 +33,8 @@ def split_docs(docs):
     )
     return text_splitter.split_documents(docs)
 
+
+
 #creating vectorstore using huggingface embedding model
 def create_vectorstore(chunks, save_path="vect_store_faiss"):
     if os.path.exists(save_path):
@@ -47,22 +48,21 @@ def create_vectorstore(chunks, save_path="vect_store_faiss"):
 
     return vectorstore
 
-def create_llm_chain():
-    llm_endpoint = HuggingFaceEndpoint(
-        repo_id="deepseek-ai/DeepSeek-R1-0528",
-        task="text-generation",
-        max_new_tokens=512,
-        do_sample=False,
-        repetition_penalty=1.03,
-    )
 
-    chat_model = ChatHuggingFace(llm = llm_endpoint)
+
+def create_llm_chain():
+    llm = ChatOllama(
+        model="llama3.1",
+        temperature=0
+)
+
+    chat_model = llm
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an assistance that helps answer the questions about Chameleon Cloud documentations.Use the provided context to answer the question directly and include a citation for the answer from the context provided. 'For example, this information comes from the FAQs and here is the link'.Do not include internal thoughts like '</think>'. IMPORTANT: If the answer is not clearly in the context, say'I don't know' and do not make up the answer. Keep the answer short a maximum of 5 sentences and be percise."), 
-        ("user", "Question:{question}\nContext: {context}")
-     ])
-        
+    ("system", "You are an assistant that helps answer the questions about Chameleon Cloud documentations. Use the provided context to answer the question directly and include a citation for the answer from the context provided. For example, 'this information comes from the FAQs and here is the link'. Mention the source of the metadata if available (e.g., source page or filename). Do not include internal thoughts like '</think>'. IMPORTANT: If the answer is not clearly in the context, say 'I don't know' and do not make up the answer. Keep the answer short — a maximum of 5 sentences and be precise."),
+    ("user", "Question:{question}\nContext: {context}")
+])
+
     return prompt | chat_model
 
 
@@ -86,7 +86,7 @@ def main():
         retrieved_docs= retriever.invoke(query)
         context = "\n\n".join(doc.page_content for doc in retrieved_docs)
         response = chain.invoke({"question": query, "context": context})
-        #print(response.content)
+        print(response.content)
         #print(retrieved_docs)
         for i, doc in enumerate(retrieved_docs):
             print(f"\n================== Match {i+1} ===================")
