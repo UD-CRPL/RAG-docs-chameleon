@@ -73,7 +73,24 @@ def loader_docs():
                             "https://chameleoncloud.org/blog/2025/05/01/repeto-releases-report-on-challenges-of-practical-reproducibility-for-systems-and-hpc-computer-science/",
                             "https://chameleoncloud.org/blog/2025/04/29/fair-co2-fair-attribution-for-cloud-carbon-emissions/",
                             "https://chameleoncloud.org/blog/2025/04/29/faster-multimodal-ai-lower-gpu-costs/",
-                            "https://python-chi.readthedocs.io/en/latest/"]
+                            "https://python-chi.readthedocs.io/en/latest/",
+                            "https://forum.chameleoncloud.org/t/openstack-python-client-issue-the-request-you-have-made-requires-authentication/88",
+                            "https://forum.chameleoncloud.org/t/new-chameleon-images-less-setup-more-coding/124",
+                            "https://forum.chameleoncloud.org/t/announcing-user-experiments-for-april-2025/89",
+                            "https://forum.chameleoncloud.org/t/400-bad-request-to-keystone-with-chrome/86",
+                            "https://forum.chameleoncloud.org/t/announcing-tips-and-tricks-for-april-2025/85",
+                            "https://forum.chameleoncloud.org/t/kvm-and-port-5000-issues/84",
+                            "https://forum.chameleoncloud.org/t/new-user-experiment-blog-mar-2025/83",
+                            "https://forum.chameleoncloud.org/t/email-with-new-connection-from-client-ip/47",
+                            "https://forum.chameleoncloud.org/t/date-not-showed/46",
+                            "https://forum.chameleoncloud.org/t/recently-enrolled-raspberry-pi5-devices-dont-show-up-on-the-host-calendar/44",
+                            "https://forum.chameleoncloud.org/t/enrolling-raspberry-pis-onto-chi-edge/43",
+                            "https://forum.chameleoncloud.org/t/proposed-change-updating-cc-ubuntu24-04-kernel-from-6-8-to-6-11/41",
+                            "https://forum.chameleoncloud.org/t/credentials-in-openrc-expired-need-to-refresh/34",
+                            "https://forum.chameleoncloud.org/t/summer-of-reproducibility-call-for-projects/31",
+                            "https://forum.chameleoncloud.org/t/fyi-about-ports-with-no-ip-address/25",
+                            "https://forum.chameleoncloud.org/t/resolved-2025-02-07-kvm-tacc-issues-affecting-instance-launch/22",
+                            "https://forum.chameleoncloud.org/t/querying-node-availability-in-python-chi/24"]
 
     docs = []
     for url in urls:
