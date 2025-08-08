@@ -36,7 +36,7 @@ def split_docs(docs):
 
 
 #creating vectorstore using huggingface embedding model
-def create_vectorstore(chunks, save_path="vect_store_faiss"):
+def create_vectorstore(chunks, save_path="vect_store"):
     if os.path.exists(save_path):
         shutil.rmtree(save_path)
         print(f'removed the old vectorstore at {save_path}')
@@ -72,7 +72,7 @@ def main():
     chunks = split_docs(docs)
     print(f"Number of chunks: {len(chunks)}")
     vectorstore = create_vectorstore(chunks)
-    retriever = vectorstore.as_retriever()
+    retriever = vectorstore.as_retriever(search_type="mmr", search_kwargs={'k': 6, 'fetch_k': 20})
     embed_model_name = "BAAI/bge-large-en"
     #return retriever, embed_model_name
     chain = create_llm_chain()
@@ -83,7 +83,8 @@ def main():
         query = input("\n Please enter a question: ")
         if query == "exit":
             break
-        retrieved_docs= retriever.invoke(query)
+        instructional_query = f"A question regarding the Chameleon Cloud testbed: {query}"
+        retrieved_docs= retriever.invoke(instructional_query)
         context = "\n\n".join(doc.page_content for doc in retrieved_docs)
         response = chain.invoke({"question": query, "context": context})
         print(response.content)

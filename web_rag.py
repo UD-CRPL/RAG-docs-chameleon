@@ -44,8 +44,9 @@ if st.session_state.vectorstore is not None:
         if st.button("Get Answer"):
             if question:
                 with st.spinner("Generating answer..."):
-                    retriever = st.session_state.vectorstore.as_retriever()
-                    docs= retriever.invoke(question)
+                    retriever = st.session_state.vectorstore.as_retriever(search_type="mmr", search_kwargs={'k': 6, 'fetch_k': 20})
+                    instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
+                    docs= retriever.invoke(instructional_query)
                     docs_content = "\n\n".join(doc.page_content for doc in docs)
                     response = chain.invoke({
                         "question": question,
