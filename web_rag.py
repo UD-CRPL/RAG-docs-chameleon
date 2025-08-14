@@ -21,9 +21,9 @@ if 'vectorstore' not in st.session_state:
     st.session_state.vectorstore = None
 
 
-url = st.text_input("Enter a URL to load documents from:", value="")
+#url = st.text_input("Enter a URL to load documents from:", value="")
 
-if st.button("Initialize RAG System"):
+if st.button("Please click her to start the RAG System"):
     with st.spinner("Loading and processing documents..."):
         docs = loader_docs()
         chunks = split_docs(docs)
