@@ -1,6 +1,5 @@
 import os
 import shutil
-from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_community.document_loaders import WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -14,8 +13,7 @@ from langchain_ollama import ChatOllama
 
 #load huggingface token from .env
 def load_token():
-    load_dotenv()
-    api_key = os.environ.get("HUGGINGFACEHUB_API_TOKEN")
+    api_key = "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"
     if not api_key: 
         raise ValueError("HUGGINGFACEHUB_API_TOKEN is not set in the environment variables.")
     return api_key
