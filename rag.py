@@ -25,8 +25,8 @@ loader_docs()
 #splitting the texts
 def split_docs(docs):
     text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 1000,
-            chunk_overlap = 400, 
+            chunk_size = 1024,
+            chunk_overlap = 150, 
             separators= ["\n### ", "\n#### ", "\n", " ", ""]
     )
     return text_splitter.split_documents(docs)
@@ -57,8 +57,8 @@ def create_llm_chain():
     chat_model = llm
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an assistant that helps answer the questions about Chameleon Cloud documentations. Use the provided context to answer the questions and include a source of matadata and its link with the answer from the context provided. For example, '<your responser here> and this information comes from the FAQs site and here is the link to the site: <link site>'. IMPORTANT: If the answer is not clearly in the context, say 'I don't know' and do not make up the answer. Keep the answer short and percise — a maximum of 5 sentences and be precise."),
-    ("user", "Question:{question}\nContext: {context}")
+        ("system", "You are an assistant that helps answer the questions about Chameleon Cloud documentation. Keep the answer short and precise — a maximum of 5 sentences and be precise."),
+        ("user", "Question:{question}\nContext: {context}")
 ])
 
     return prompt | chat_model
