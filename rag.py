@@ -58,7 +58,7 @@ def create_llm_chain():
 
     prompt = ChatPromptTemplate.from_messages([
         ("system", "You are an assistant that helps answer the questions about Chameleon Cloud documentation. Keep the answer short and precise — a maximum of 5 sentences and be precise."),
-        ("user", "Question:{question}\nContext: {context}")
+        ("user", "Question:{question}")
 ])
 
     return prompt | chat_model
@@ -82,15 +82,15 @@ def main():
         if query == "exit":
             break
         instructional_query = f"A question regarding the Chameleon Cloud testbed: {query}"
-        retrieved_docs= retriever.invoke(instructional_query)
-        context = "\n\n".join(doc.page_content for doc in retrieved_docs)
-        response = chain.invoke({"question": query, "context": context})
+        # retrieved_docs= retriever.invoke(instructional_query)
+        # context = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        response = chain.invoke({"question": query})
         print(response.content)
         #print(retrieved_docs)
-        for i, doc in enumerate(retrieved_docs):
-            print(f"\n================== Match {i+1} ===================")
-            print(doc.page_content)
-            print(f"Metadata: {doc.metadata}")
+        # for i, doc in enumerate(retrieved_docs):
+        #     print(f"\n================== Match {i+1} ===================")
+        #     print(doc.page_content)
+        #     print(f"Metadata: {doc.metadata}")
 
 if __name__ == "__main__":
     main()
