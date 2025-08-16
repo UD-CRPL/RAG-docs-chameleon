@@ -39,7 +39,7 @@ def create_vectorstore(chunks, save_path="vect_store"):
         shutil.rmtree(save_path)
         print(f'removed the old vectorstore at {save_path}')
 
-    embeddings_model = HuggingFaceEmbeddings(model_name="BAAI/bge-large-en")
+    embeddings_model = HuggingFaceEmbeddings(model_name="BAAI/BAAI/bge-base-en-v1.5")
     vectorstore = FAISS.from_documents(documents= chunks, embedding= embeddings_model)
     vectorstore.save_local(save_path)
     print(f'new vectorstore saved at {save_path}')
