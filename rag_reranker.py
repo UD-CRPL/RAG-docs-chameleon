@@ -78,7 +78,7 @@ def create_llm_chain():
         - Synthesize a single, cohesive answer from the different sources. Do not simply list information from each source separately.
         - If the answer is not present in the context, you MUST respond with the single phrase: "I don't know."
         - Do not use any information outside of the provided context. Do not make up answers.
-        - After your answer, list all the sources you used to construct it.
+        - After your answer, list all the sources you used to construct it. Be explict about the source citation, including the URL and the source title. These must be included in the list of sources.
 
         ## OUTPUT FORMAT ##
         <A comprehensive, synthesized answer that directly addresses the user's intent.>
@@ -156,11 +156,11 @@ def main():
     vectorstore = create_vectorstore(chunks)
 
     # Standard retriever
-    retriever = vectorstore.as_retriever(search_kwargs={'k': 20}) # Retrieve more documents initially
+    retriever = vectorstore.as_retriever(search_kwargs={'k': 40}) # Retrieve more documents initially
 
     # Initialize the reranker model
     model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-large")
-    compressor = CrossEncoderReranker(model=model, top_n=5) # Rerank and get top 5
+    compressor = CrossEncoderReranker(model=model, top_n=10) # Rerank and get top 10
 
     # Create the compression retriever
     compression_retriever = ContextualCompressionRetriever(
