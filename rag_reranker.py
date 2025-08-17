@@ -35,8 +35,8 @@ loader_docs()
 #splitting the texts
 def split_docs(docs):
     text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 1024,
-            chunk_overlap = 150,
+            chunk_size = 512,
+            chunk_overlap = 24,
             separators= ["\n### ", "\n#### ", "\n", " ", ""]
     )
     return text_splitter.split_documents(docs)
@@ -160,7 +160,7 @@ def main():
 
     # Initialize the reranker model
     model = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-large")
-    compressor = CrossEncoderReranker(model=model, top_n=10) # Rerank and get top 10
+    compressor = CrossEncoderReranker(model=model, top_n=20) # Rerank and get top 20
 
     # Create the compression retriever
     compression_retriever = ContextualCompressionRetriever(
