@@ -13,6 +13,7 @@ from langchain_ollama import ChatOllama
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import CrossEncoderReranker
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+import pandas as pd
 
 
 #load huggingface token from .env
@@ -98,6 +99,54 @@ def create_llm_chain():
 
     return prompt | chat_model
 
+def evaluate_from_csv(chain, retriever, file_path="./questions.csv", new_column_name='Answer'):
+    """
+    Reads questions from a CSV file, gets model answers, and writes them back to a new column.
+    """
+    try:
+        df = pd.read_csv(file_path)
+    except FileNotFoundError:
+        print(f"Error: The file {file_path} was not found.")
+        df = pd.DataFrame(columns=['Query'], data=[
+            """What is the purpose of the Chameleon Associate Sites?""",
+            """What specific model of GPU is available on the gpu_rtx_8000 nodes?""",
+            """How do I create an isolated network for my instances using the GUI?""",
+            """How do I find and use a pre-configured Jupyter notebook on Chameleon?""",
+            """My bare metal node is stuck in the "deploying" state for a long time. What should I do?""",
+            """I get an "Error 403: Forbidden" when trying to use the OpenStack CLI. What's wrong?""",
+            """What is "CHI-in-a-Box"?""",
+            """What does it mean for Chameleon to support "deep reconfigurability"?""",
+            """What is the difference between a Floating IP and a Private IP?""",
+            """When should I use an FPGA node versus a GPU node?""",
+            """How do I cite Chameleon in my research paper?""",
+            """How do I attach a volume to my running instance?""",
+            """What is the maximum duration for a single lease reservation?""",
+            """Can I use my Chameleon allocation to mine cryptocurrency?""",
+            """How can I set up an experiment that requires a specific kernel version on a bare metal node?""",
+            """What is the Trovi artifacts repository?""",
+            """How do I launch multiple nodes with one command using Heat templates?""",
+            """Where are the main Chameleon hardware sites located?""",
+            """Why can't my instance access the internet, even with a floating IP?""",
+            """How can I repeat a networking experiment I found on the Chameleon blog to ensure reproducibility?"""
+        ])
+
+    answers = []
+    print("Processing queries from the CSV file...")
+    for index, row in df.iterrows():
+        query = row['Query']
+        print(f"Processing query {index + 1}: {query}")
+
+        instructional_query = f"A question regarding the Chameleon Cloud testbed: {query}"
+        retrieved_docs = retriever.invoke(instructional_query)
+        context = "\n\n".join(doc.page_content for doc in retrieved_docs)
+        response = chain.invoke({"context": context, "question": query})
+        
+        answers.append(response.content)
+
+    df[new_column_name] = answers
+    df.to_csv(file_path, index=False)
+    print(f"\nProcessing complete. The answers have been added to the '{new_column_name}' column in {file_path}")
+
 
 def main():
     load_token()
@@ -120,7 +169,7 @@ def main():
 
     chain = create_llm_chain()
 
-    
+    evaluate_from_csv(chain, compression_retriever, file_path="./questions.csv", new_column_name='Answer')
 
     print("________________________________________________________________________________________________________________")
     print("Type 'exit' to quit.")
