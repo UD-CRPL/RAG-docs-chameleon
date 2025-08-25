@@ -2,7 +2,7 @@ RAG-docs-chameleon
 --------------------------------------------------------------------------------------------------
 Overview
 --------------------------------------------------------------------------------------------------
-This repository provides a primary Retrieval-Augmented Generation (RAG) pipeline for answering questions about Chameleon Cloud documentation. The repo icludes files to build a vector store by indexing, ask users questions, and retrieve information from provided sources. 
+This repository provides a primary Retrieval-Augmented Generation (RAG) pipeline for answering questions about Chameleon Cloud documentation. The repo includes files that build a vector store by indexing, ask users questions, and retrieve information from provided sources. 
 
 Prerequisites
 --------------------------------------------------------------------------------------------------
