@@ -53,4 +53,4 @@ You can run rag.py script using the command line:
 
 Notes
 -------------------------------------------------------------------------------------------------
-We ran rag.py on a Chameleon Cloud KVM-based VM with an NVIDIA H100 GPU.  
+We ran rag.py on a Chameleon Cloud KVM-based VM with one NVIDIA H100 GPU.  
