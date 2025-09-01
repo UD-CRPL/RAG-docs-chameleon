@@ -3,7 +3,7 @@ This repository provides a primary Retrieval-Augmented Generation (RAG) pipeline
 Prerequisites
 ----------
 1. Operating System: The code is written for Linux operating systems.
-2. Python: Ensure you have Python 3.9 or higher installed.
+2. Python: Ensure you have Python 3.11 or higher installed.
 3. Virtual Environment: It is necessary to use a virtual environment (venv) to manage dependencies.
 
 Setup
