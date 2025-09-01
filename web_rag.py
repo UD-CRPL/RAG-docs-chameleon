@@ -9,9 +9,9 @@ from rag import create_llm_chain
 st.set_page_config(page_title="RAG Chameleon Web", page_icon= "🙂", layout = "wide")
 st.title("RAG Chameleon Question-Answering Demo")
 
-# Load environment varialbes
+# Load environment variables
 load_dotenv()
-api_key = os.environ.get("HUGGINGFACEHUB_API_TOKEN")
+api_key = os.environ.get("HUGGINGFACE_API_KEY")
 
 if not api_key:
     st.error("api key is not set in the environment variable")
