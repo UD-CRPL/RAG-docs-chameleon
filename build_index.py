@@ -6,16 +6,13 @@ Usage:
     python build_index.py
 """
 from loader import loader_docs
-from rag import split_docs, create_vectorstore, VECT_STORE_PATH
+from rag import create_vectorstore, VECT_STORE_PATH
 
 if __name__ == "__main__":
     print("Loading docs...")
     docs = loader_docs()
     print(f"Loaded {len(docs)} documents.")
 
-    chunks = split_docs(docs)
-    print(f"Split into {len(chunks)} chunks.")
-
     print("Building vector store...")
-    create_vectorstore(chunks)
+    create_vectorstore(docs)
     print(f"Index saved to '{VECT_STORE_PATH}'. Done.")

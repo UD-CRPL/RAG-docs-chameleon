@@ -1,4 +1,5 @@
 import os
+import json
 import shutil
 from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
@@ -36,15 +37,26 @@ def split_docs(docs, chunk_size=512, chunk_overlap=50):
     return text_splitter.split_documents(docs)
 
 
-#creating vectorstore using huggingface embedding model
-def create_vectorstore(chunks, save_path=VECT_STORE_PATH):
+def create_vectorstore(docs, save_path=VECT_STORE_PATH):
+    """Build FAISS index from small chunks and save full pages alongside it."""
     if os.path.exists(save_path):
         for f in os.listdir(save_path):
             os.remove(os.path.join(save_path, f))
 
+    # Save full pages keyed by source URL for context retrieval
+    pages = {doc.metadata["source"]: doc.page_content for doc in docs if doc.metadata.get("source")}
+    with open(os.path.join(save_path, "pages.json"), "w") as f:
+        json.dump(pages, f)
+
+    chunks = split_docs(docs)
     vectorstore = FAISS.from_documents(documents=chunks, embedding=get_embeddings_model())
     vectorstore.save_local(save_path)
     return vectorstore
+
+
+def load_pages(save_path=VECT_STORE_PATH):
+    with open(os.path.join(save_path, "pages.json")) as f:
+        return json.load(f)
 
 
 def load_vectorstore(save_path=VECT_STORE_PATH, k=6, fetch_k=20, search_type='mmr'):
