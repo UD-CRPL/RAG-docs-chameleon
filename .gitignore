@@ -1,6 +1,11 @@
 .env
 
 # Ignore virtual env
-rag_env/ 
+rag_env/
 venv/*
+
+# Vector store (built at deploy time)
 vect_store/*
+
+# Traefik TLS certs
+letsencrypt/

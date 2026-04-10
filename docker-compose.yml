@@ -1,0 +1,40 @@
+services:
+
+  traefik:
+    image: traefik:v2.10
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "letsencrypt:/letsencrypt"
+
+  rag-app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - vect_store:/app/vect_store
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.rag.rule=Host(`${HOST}`)"
+      - "traefik.http.routers.rag.entrypoints=websecure"
+      - "traefik.http.routers.rag.tls.certresolver=letsencrypt"
+      - "traefik.http.services.rag.loadbalancer.server.port=8501"
+
+volumes:
+  vect_store:
+  letsencrypt:
