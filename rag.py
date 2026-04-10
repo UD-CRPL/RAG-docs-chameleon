@@ -39,7 +39,8 @@ def split_docs(docs, chunk_size=512, chunk_overlap=50):
 #creating vectorstore using huggingface embedding model
 def create_vectorstore(chunks, save_path=VECT_STORE_PATH):
     if os.path.exists(save_path):
-        shutil.rmtree(save_path)
+        for f in os.listdir(save_path):
+            os.remove(os.path.join(save_path, f))
 
     vectorstore = FAISS.from_documents(documents=chunks, embedding=get_embeddings_model())
     vectorstore.save_local(save_path)
