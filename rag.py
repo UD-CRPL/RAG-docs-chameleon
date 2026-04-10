@@ -60,8 +60,14 @@ def create_llm_chain():
     )
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an assistant that helps answer the questions about Chameleon Cloud documentations. Use the provided context to answer the questions and include a source of matadata and its link with the answer from the context provided. For example, '<your responser here> and this information comes from the FAQs site and here is the link to the site: <link site>'. IMPORTANT: If the answer is not clearly in the context, say 'I don't know' and do not make up the answer. Keep the answer short and percise — a maximum of 5 sentences and be precise."),
-    ("user", "Question:{question}\nContext: {context}")
+        ("system", (
+            "You are a helpful assistant that answers questions about Chameleon Cloud based on its official documentation. "
+            "Use only the provided context to answer. "
+            "For simple questions, give a concise answer. For complex questions, give a thorough, step-by-step answer. "
+            "Do not include URLs or source citations in your answer — relevant documentation links will be shown separately. "
+            "If the answer is not in the context, say 'I don't know' and do not make up an answer."
+        )),
+        ("user", "Question: {question}\nContext: {context}")
     ])
 
     return prompt | llm

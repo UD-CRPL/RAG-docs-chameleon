@@ -117,14 +117,14 @@ with col2:
             f'<div class="answer-box">{st.session_state.last_response}</div>',
             unsafe_allow_html=True
         )
-        st.markdown("")
 
-        with st.expander("Show Retrieved Sources"):
-            for i, doc in enumerate(st.session_state.last_context, 1):
-                source = doc.metadata.get('source', 'N/A')
-                st.markdown(f"**Source {i}:** [{source}]({source})")
-                st.markdown(doc.page_content)
-                st.markdown("---")
+        st.markdown("#### Further Reading")
+        seen = set()
+        for doc in st.session_state.last_context:
+            source = doc.metadata.get('source')
+            if source and source not in seen:
+                seen.add(source)
+                st.markdown(f"- [{source}]({source})")
 
 st.markdown("""
 <hr style="margin-top: 48px; border-color: #e0e0e0;">
