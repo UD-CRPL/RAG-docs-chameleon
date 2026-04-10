@@ -2,3 +2,5 @@
 
 # Ignore virtual env
 rag_env/ 
+venv/*
+vect_store/*

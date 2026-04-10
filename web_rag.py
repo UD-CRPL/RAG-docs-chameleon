@@ -1,72 +1,136 @@
 import os
 from dotenv import load_dotenv
 import streamlit as st
-from loader import loader_docs
-from rag import split_docs 
-from rag import create_vectorstore
-from rag import create_llm_chain
+from rag import load_vectorstore, create_llm_chain, VECT_STORE_PATH
 
-st.set_page_config(page_title="RAG Chameleon Web", page_icon= "🙂", layout = "wide")
-st.title("RAG Chameleon Question-Answering Demo")
+st.set_page_config(
+    page_title="Chameleon Docs Assistant",
+    page_icon="https://chameleoncloud.org/static/images/favicon.ico",
+    layout="wide",
+)
 
-# Load environment variables
 load_dotenv()
-api_key = os.environ.get("HUGGINGFACE_API_KEY")
 
-if not api_key:
-    st.error("api key is not set in the environment variable")
+# --- Branding ---
+st.markdown("""
+<style>
+    /* Brand color variables */
+    :root { --chameleon-blue: #239ff0; }
+
+    /* Header bar */
+    .chameleon-header {
+        background-color: #ffffff;
+        border-bottom: 3px solid #239ff0;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+    .chameleon-header a {
+        color: #239ff0;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 14px;
+        margin-left: 20px;
+    }
+    .chameleon-header a:hover { text-decoration: underline; }
+
+    /* Answer box */
+    .answer-box {
+        background: #f0f8ff;
+        border-left: 4px solid #239ff0;
+        border-radius: 4px;
+        padding: 16px;
+    }
+
+    /* Button styling */
+    div.stButton > button {
+        background-color: #239ff0;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+    div.stButton > button:hover {
+        background-color: #1a8fd8;
+        color: white;
+    }
+
+    /* Hide default Streamlit header */
+    header[data-testid="stHeader"] { display: none; }
+</style>
+
+<div class="chameleon-header">
+    <a href="https://chameleoncloud.org" target="_blank">
+        <img src="https://chameleoncloud.org/static/images/logo.png" height="36" alt="Chameleon Cloud">
+    </a>
+    <div>
+        <a href="https://chameleoncloud.org" target="_blank">Home</a>
+        <a href="https://chameleoncloud.readthedocs.io/en/latest/" target="_blank">Documentation</a>
+        <a href="https://chameleoncloud.org/learn/frequently-asked-questions/" target="_blank">FAQ</a>
+        <a href="https://chameleoncloud.org/user/help/" target="_blank">Help Desk</a>
+        <a href="https://www.chameleoncloud.org/login/" target="_blank">Login</a>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.title("Chameleon Docs Assistant")
+st.caption("Ask questions about Chameleon Cloud — powered by RAG over the official documentation.")
+
+if not os.path.exists(VECT_STORE_PATH):
+    st.error("Vector store not found. Please run `python build_index.py` first to build the index.")
     st.stop()
 
-if 'vectorstore' not in st.session_state:
-    st.session_state.vectorstore = None
+if 'retriever' not in st.session_state:
+    with st.spinner("Loading index..."):
+        st.session_state.retriever = load_vectorstore()
 
+if 'chain' not in st.session_state:
+    st.session_state.chain = create_llm_chain()
 
-#url = st.text_input("Enter a URL to load documents from:", value="")
+col1, col2 = st.columns(2)
 
-if st.button("Please click her to start the RAG System"):
-    with st.spinner("Loading and processing documents..."):
-        docs = loader_docs()
-        chunks = split_docs(docs)
-        vectorstore= create_vectorstore(chunks)
-        st.session_state.vectorstore = vectorstore
-        st.success("RAG system initialized successfuly!")
+with col1:
+    st.subheader("Ask a Question")
+    question = st.text_area("Enter your question:", height=120)
 
+    if st.button("Get Answer"):
+        if question:
+            with st.spinner("Searching docs and generating answer..."):
+                instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
+                docs = st.session_state.retriever.invoke(instructional_query)
+                docs_content = "\n\n".join(doc.page_content for doc in docs)
+                response = st.session_state.chain.invoke({
+                    "question": question,
+                    "context": docs_content
+                })
+                st.session_state.last_response = response.content
+                st.session_state.last_context = docs
+        else:
+            st.warning("Please enter a question.")
 
-if st.session_state.vectorstore is not None:
-    chain = create_llm_chain()
-    
-    col1, col2 = st.columns(2)
+with col2:
+    st.subheader("Answer")
+    if 'last_response' in st.session_state:
+        st.markdown(
+            f'<div class="answer-box">{st.session_state.last_response}</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown("")
 
-    with col1:
-        st.subheader("Ask a Question")
-        question = st.text_area("Enter your question:")
+        with st.expander("Show Retrieved Sources"):
+            for i, doc in enumerate(st.session_state.last_context, 1):
+                source = doc.metadata.get('source', 'N/A')
+                st.markdown(f"**Source {i}:** [{source}]({source})")
+                st.markdown(doc.page_content)
+                st.markdown("---")
 
-        if st.button("Get Answer"):
-            if question:
-                with st.spinner("Generating answer..."):
-                    retriever = st.session_state.vectorstore.as_retriever(search_type="mmr", search_kwargs={'k': 6, 'fetch_k': 20})
-                    instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
-                    docs= retriever.invoke(instructional_query)
-                    docs_content = "\n\n".join(doc.page_content for doc in docs)
-                    response = chain.invoke({
-                        "question": question,
-                        "context": docs_content
-                        })
-                    st.session_state.last_response = response.content
-                    st.session_state.last_context = docs
-
-            else:
-                st.wasrning("Please enter a question:")
-
-        with col2:
-            st.subheader("Answer")
-            if 'last_response' in st.session_state:
-                st.write(st.session_state.last_response)
-
-                with st.expander("Show Retrieved Context"):
-                    for i, doc in enumerate(st.session_state.last_context, 1):
-                        st.markdown(f"**Relevant Document {i}:**")
-                        st.markdown(doc.page_content)
-                        st.markdown("---")
-
-
+st.markdown("""
+<hr style="margin-top: 48px; border-color: #e0e0e0;">
+<div style="text-align:center; color:#888; font-size:13px; padding: 12px 0;">
+    Chameleon Docs Assistant &nbsp;|&nbsp;
+    <a href="https://chameleoncloud.org" target="_blank" style="color:#239ff0;">chameleoncloud.org</a>
+    &nbsp;|&nbsp; Powered by <a href="https://ai.tejas.tacc.utexas.edu" target="_blank" style="color:#239ff0;">Tejas AI</a>
+</div>
+""", unsafe_allow_html=True)
