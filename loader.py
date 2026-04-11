@@ -1,181 +1,234 @@
 import os
+import requests
+from urllib.parse import urljoin
 from langchain_core.documents import Document
 from bs4 import BeautifulSoup
-import requests
 
 os.environ['USER_AGENT'] = 'myagent'
 headers = {"User-Agent": os.environ['USER_AGENT']}
 
+READTHEDOCS_BASE = "https://chameleoncloud.readthedocs.io/en/latest/"
+PYTHON_CHI_BASE = "https://python-chi.readthedocs.io/en/latest/"
+CHI_EDGE_GITBOOK = "https://chameleoncloud.gitbook.io/chi-edge"
+TROVI_GITBOOK = "https://chameleoncloud.gitbook.io/trovi"
 
-# clean_docs will remove the header, footer, and table of content of the sources
-def clean_docs(url, headers):
-    try: 
-        response = requests.get(url, headers=headers)
+# chameleoncloud.org pages worth indexing (filtered from sitemap)
+CHAMELEON_ORG_URLS = [
+    "https://chameleoncloud.org/learn/frequently-asked-questions/",
+    "https://chameleoncloud.org/about/chameleon/",
+    "https://chameleoncloud.org/experiment/sites/",
+    "https://chameleoncloud.org/hardware/",
+    "https://chameleoncloud.org/experiment/chiedge/",
+    "https://chameleoncloud.org/experiment/chiedge/hardware-info/",
+]
+
+# Blog posts (no sitemap — manually curated, high-value content)
+BLOG_BASE = "https://blog.chameleoncloud.org"
+# Only index posts from these categories — skip user experiments and announcements
+# which tend to have little practical how-to content
+BLOG_CATEGORIES = {"tips-and-tricks", "chameleon-changelog", "featured"}
+
+# Forum posts (high-value Q&A)
+FORUM_BASE = "https://forum.chameleoncloud.org"
+
+
+def get_readthedocs_urls(base_url):
+    """Discover all page URLs from the readthedocs table of contents page."""
+    toc_url = urljoin(base_url, "contents.html")
+    try:
+        resp = requests.get(toc_url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        urls = set()
+        for a in soup.find_all("a", href=True):
+            href = a["href"].split("#")[0]
+            if href.endswith(".html") and not any(x in href for x in ["genindex", "search", "py-modindex"]):
+                urls.add(urljoin(base_url, href))
+        return sorted(urls)
+    except Exception as e:
+        print(f"Failed to fetch TOC from {toc_url}: {e}")
+        return []
+
+
+def get_python_chi_urls(base_url):
+    """Discover all page URLs from the python-chi index page."""
+    try:
+        resp = requests.get(base_url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        urls = set()
+        for a in soup.find_all("a", href=True):
+            href = a["href"].split("#")[0]
+            if href.endswith(".html") and not any(x in href for x in ["genindex", "search", "py-modindex"]):
+                full = urljoin(base_url, href)
+                if full.startswith(base_url):  # only keep urls within python-chi
+                    urls.add(full)
+        return sorted(urls)
+    except Exception as e:
+        print(f"Failed to fetch python-chi index from {base_url}: {e}")
+        return []
+
+
+def get_gitbook_docs(base_url=CHI_EDGE_GITBOOK, skip_prefixes=()):
+    """Fetch all pages from a GitBook site using its sitemap and .md endpoints."""
+    from bs4 import XMLParsedAsHTMLWarning
+    import warnings
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+    docs = []
+    try:
+        resp = requests.get(f"{base_url}/sitemap-pages.xml", headers=headers, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        urls = [loc.text.strip() for loc in soup.find_all("loc")]
+    except Exception as e:
+        print(f"Failed to fetch GitBook sitemap: {e}")
+        return docs
+
+    for url in urls:
+        if any(url.startswith(f"{base_url}/{p}") for p in skip_prefixes):
+            continue
+
+        # GitBook root URL maps to readme.md; all other pages use {url}.md
+        md_url = f"{base_url}/readme.md" if url.rstrip("/") == base_url.rstrip("/") else f"{url}.md"
+        try:
+            md_resp = requests.get(md_url, headers=headers, timeout=10)
+            md_resp.raise_for_status()
+            if md_resp.text.strip().startswith("# Page Not Found"):
+                continue
+            docs.append(Document(page_content=md_resp.text, metadata={"source": url}))
+        except Exception as e:
+            print(f"Failed to fetch GitBook page {url}: {e}")
+
+    return docs
+
+
+def get_blog_urls(base_url=BLOG_BASE, categories=BLOG_CATEGORIES):
+    """Crawl all paginated blog listing pages and collect post URLs in allowed categories."""
+    post_urls = set()
+    page = 1
+    while True:
+        listing_url = base_url if page == 1 else f"{base_url}/page/{page}/"
+        try:
+            resp = requests.get(listing_url, headers=headers, timeout=10)
+            if resp.status_code == 404:
+                break
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+
+            # Collect post URLs and their categories from this page
+            for article in soup.find_all("article", class_="post-item"):
+                # Get categories for this post
+                post_cats = {
+                    a["href"].rstrip("/").split("/")[-1]
+                    for a in article.find_all("a", href=True)
+                    if "/categories/" in a["href"]
+                }
+                if not categories or post_cats & categories:
+                    link = article.find("a", href=True)
+                    if link and link["href"].startswith(base_url):
+                        post_urls.add(link["href"].rstrip("/") + "/")
+
+            # Check if there's a next page
+            if not soup.find("a", string=lambda t: t and "next" in t.lower()):
+                break
+            page += 1
+        except Exception as e:
+            print(f"Failed to fetch blog page {page}: {e}")
+            break
+    return sorted(post_urls)
+
+
+def get_forum_docs(base_url=FORUM_BASE):
+    """Fetch all topics from the Discourse forum via JSON API and return as Documents."""
+    docs = []
+    try:
+        resp = requests.get(f"{base_url}/latest.json", headers=headers, timeout=10)
+        resp.raise_for_status()
+        topics = resp.json()["topic_list"]["topics"]
+    except Exception as e:
+        print(f"Failed to fetch forum topic list: {e}")
+        return docs
+
+    for topic in topics:
+        topic_id = topic["id"]
+        title = topic["title"]
+        url = f"{base_url}/t/{topic_id}"
+        try:
+            tresp = requests.get(f"{url}.json", headers=headers, timeout=10)
+            tresp.raise_for_status()
+            posts = tresp.json()["post_stream"]["posts"]
+
+            # Concatenate all posts in the thread, labelled by position
+            parts = [f"Forum topic: {title}\n"]
+            for i, post in enumerate(posts):
+                text = BeautifulSoup(post["cooked"], "html.parser").get_text(separator="\n")
+                label = "Question" if i == 0 else f"Reply {i}"
+                parts.append(f"[{label}]\n{text.strip()}")
+
+            content = "\n\n".join(parts)
+            docs.append(Document(page_content=content, metadata={"source": url}))
+        except Exception as e:
+            print(f"Failed to fetch forum topic {topic_id}: {e}")
+
+    return docs
+
+
+def clean_docs(url):
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
-        html = response.text 
-
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(response.text, 'html.parser')
 
         for tag in soup(["header", "footer", "nav", "aside", "script", "style"]):
             tag.decompose()
 
-        toc_classes = ["toc", "toctree-wrapper", "wy-nav-side", "rst-content-toc"]
-        for class_name in toc_classes:
-            for toc_tag in soup.find_all(class_=class_name):
-                toc_tag.decompose()
-        
+        for class_name in ["toc", "toctree-wrapper", "wy-nav-side", "rst-content-toc"]:
+            for tag in soup.find_all(class_=class_name):
+                tag.decompose()
+
         raw_text = soup.get_text(separator="\n")
         lines = [line.strip() for line in raw_text.splitlines()]
         clean_text = "\n".join(line for line in lines if line)
-        
 
-        return Document(page_content=clean_text, metadata={"source": url}) 
+        return Document(page_content=clean_text, metadata={"source": url})
 
     except Exception as e:
-        print(f"\n Failed to process {url}: {e}" )
+        print(f"Failed to process {url}: {e}")
+        return None
 
 
-# loader_docs will load all the docuemnts to "docs"
 def loader_docs():
-    urls = [
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/shares/mounting.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/shares/concepts.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/kvm/kvm_volumes.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/complex/catalog.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/kvm/kvm_lbaas.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/sharing/packaging_artifacts.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/complex/sharing.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/fpga/index.html#introduction",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_vlan.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/swift/index.html#availability",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/images/gui_management.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/shares/gui_management.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/complex/gui_management.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/complex/heat_templates.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_fabnet.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/complex/cli_management.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_jumbo_frames.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/power_monitoring/index.html#hardware-support",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/power_monitoring/index.html#getting-started",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_stitching.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/sharing/browsing_artifacts.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/images/cli_management.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/kvm/kvm_gui.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_basic.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/kvm/kvm_instance_migration.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/swift/index.html#objects-and-containers",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/shares/cli_management.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/fpga/index.html#reserving-fpga-hardware",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/complex/advanced_topics.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/power_monitoring/index.html#available-power-monitoring-methods",
-        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/user/federation.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/user/pi_eligibility.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/user/project.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/user/profile.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/user/help.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/gui/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/cli/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/jupyter/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/discovery/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/reservations/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/baremetal/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/images/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/power_monitoring/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/complex/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/swift/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/shares/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/fpga/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/sharing/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/daypass/index.html",
-        "https://chameleoncloud.readthedocs.io/en/latest/technical/kvm/index.html",
-        "https://chameleoncloud.org/learn/frequently-asked-questions/",
-        "https://chameleoncloud.org/blog/2024/08/19/composible-hardware-on-chameleon-now/",
-        "https://chameleoncloud.org/blog/2025/04/21/importing-github-repositories-to-trovi-a-step-by-step-guide/",
-        "https://chameleoncloud.org/blog/2024/06/18/power-measurement-and-management-on-chameleon/",
-        "https://chameleoncloud.org/blog/2025/06/20/accelerate-your-research-with-nvidia-h100-gpus-on-kvmtacc/",
-        "https://chameleoncloud.org/blog/2023/06/26/chameleon-images-overview/",
-        "https://chameleoncloud.org/blog/2025/07/01/chameleon-changelog-for-june-2025/",
-        "https://chameleoncloud.org/blog/2024/11/18/building-mpi-clusters-on-chameleon-a-practical-guide/",
-        "https://chameleoncloud.org/blog/2023/05/01/how-to-port-your-experiments-between-chameleon-sites/",
-        "https://chameleoncloud.org/blog/2024/11/01/chameleon-changelog-for-october-2024/",
-        "https://chameleoncloud.org/blog/2023/10/02/chameleon-changelog-for-september-2023/",
-        "https://chameleoncloud.org/blog/2025/03/17/extending-your-research-artifacts-lifespan/",
-        "https://chameleoncloud.org/blog/2024/10/21/packaging-your-experiments-on-chameleon-with-python-chi-10/",
-        "https://chameleoncloud.org/blog/2024/07/15/expanding-horizons-with-chiedge-new-peripheral-support/",
-        "https://chameleoncloud.org/blog/2024/01/04/chameleon-changelog-for-december-2023/",
-        "https://chameleoncloud.org/blog/2023/07/25/using-terraform-with-chameleon/",
-        "https://chameleoncloud.org/blog/2023/11/01/chameleon-changelog-for-october-2023/",
-        "https://chameleoncloud.org/blog/2023/03/20/the-practical-reproducibility-opportunity/",
-        "https://chameleoncloud.org/blog/2022/12/12/tickets-of-the-year-2022/",
-        "https://chameleoncloud.org/blog/2023/09/01/chameleon-changelog-for-august-2023/",
-        "https://chameleoncloud.org/blog/2024/09/16/back-to-school-with-chameleon/",
-        "https://chameleoncloud.org/blog/2025/01/20/top-read-blogs-on-chameleon-this-year-what-blogs-were-most-helpful-to-our-community/",
-        "https://chameleoncloud.org/blog/2024/07/01/chameleon-changelog-for-june-2024/",
-        "https://chameleoncloud.org/blog/2025/06/02/chameleon-changelog-for-may-2025/",
-        "https://chameleoncloud.org/blog/2024/09/03/chameleon-changelog-for-august-2024/",
-        "https://chameleoncloud.org/blog/2023/12/19/tickets-of-the-year-on-chameleon-2023/",
-        "https://chameleoncloud.org/blog/2024/10/01/chameleon-changelog-for-september-2024/",
-        "https://chameleoncloud.org/blog/2024/06/04/chameleon-changelog-for-may-2024/",
-        "https://chameleoncloud.org/blog/2024/03/01/chameleon-changelog-for-february-2024/",
-        "https://chameleoncloud.org/blog/2024/12/18/chameleon-tickets-of-the-year-2024/",
-        "https://chameleoncloud.org/blog/2023/01/23/experiment-pattern-bastion-host/",
-        "https://chameleoncloud.org/blog/2024/08/02/chameleon-changelog-for-july-2024/",
-        "https://chameleoncloud.org/blog/2025/03/03/chameleon-changelog-for-february-2025/",
-        "https://chameleoncloud.org/blog/2025/05/19/leveraging-new-and-improved-chameleon-images/",
-        "https://chameleoncloud.org/blog/2023/12/01/chameleon-changelog-for/",
-        "https://chameleoncloud.org/blog/2025/02/04/chameleon-changelog-for-january-2025/",
-        "https://chameleoncloud.org/blog/2024/04/15/chiedge-transitioning-from-successful-preview-to-full-production/",
-        "https://chameleoncloud.org/blog/2025/01/02/chameleon-changelog-for-december-2024/",
-        "https://chameleoncloud.org/blog/2023/08/29/running-experiments-inside-a-jupyter-notebook/",
-        "https://chameleoncloud.org/blog/2024/02/01/chameleon-changelog-for-january-2023/",
-        "https://chameleoncloud.org/blog/2024/05/21/seamless-ssh-container-access-with-chiedge/",
-        "https://chameleoncloud.org/blog/2024/05/01/chameleon-changelog-for-april-2024/",
-        "https://chameleoncloud.org/blog/2024/04/01/chameleon-changelog-for-march-2024/",
-        "https://chameleoncloud.org/blog/2025/07/21/the-hitchhikers-guide-to-chameleon-documentation-finding-answers-fast/",
-        "https://chameleoncloud.org/blog/2025/05/01/chameleon-changelog-for-april-2025/",
-        "https://python-chi.readthedocs.io/en/latest/",
-        "https://python-chi.readthedocs.io/en/latest/modules/image.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/exception.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/network.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/storage.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/share.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/lease.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/magic.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/container.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/clients.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/server.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/hardware.html",
-        "https://python-chi.readthedocs.io/en/latest/examples.html",
-        "https://python-chi.readthedocs.io/en/latest/modules/ssh.html",
-        "https://forum.chameleoncloud.org/t/openstack-python-client-issue-the-request-you-have-made-requires-authentication/88",
-        "https://forum.chameleoncloud.org/t/new-chameleon-images-less-setup-more-coding/124",
-        "https://forum.chameleoncloud.org/t/announcing-user-experiments-for-april-2025/89",
-        "https://forum.chameleoncloud.org/t/400-bad-request-to-keystone-with-chrome/86",
-        "https://forum.chameleoncloud.org/t/announcing-tips-and-tricks-for-april-2025/85",
-        "https://forum.chameleoncloud.org/t/kvm-and-port-5000-issues/84",
-        "https://forum.chameleoncloud.org/t/new-user-experiment-blog-mar-2025/83",
-        "https://forum.chameleoncloud.org/t/email-with-new-connection-from-client-ip/47",
-        "https://forum.chameleoncloud.org/t/date-not-showed/46",
-        "https://forum.chameleoncloud.org/t/recently-enrolled-raspberry-pi5-devices-dont-show-up-on-the-host-calendar/44",
-        "https://forum.chameleoncloud.org/t/enrolling-raspberry-pis-onto-chi-edge/43",
-        "https://forum.chameleoncloud.org/t/proposed-change-updating-cc-ubuntu24-04-kernel-from-6-8-to-6-11/41",
-        "https://forum.chameleoncloud.org/t/credentials-in-openrc-expired-need-to-refresh/34",
-        "https://forum.chameleoncloud.org/t/summer-of-reproducibility-call-for-projects/31",
-        "https://forum.chameleoncloud.org/t/fyi-about-ports-with-no-ip-address/25",
-        "https://forum.chameleoncloud.org/t/resolved-2025-02-07-kvm-tacc-issues-affecting-instance-launch/22",
-        "https://forum.chameleoncloud.org/t/querying-node-availability-in-python-chi/24"
-    ]
+    readthedocs_urls = get_readthedocs_urls(READTHEDOCS_BASE)
+    python_chi_urls = get_python_chi_urls(PYTHON_CHI_BASE)
+    blog_urls = get_blog_urls()
+    forum_docs = get_forum_docs()
+    chi_edge_docs = get_gitbook_docs(CHI_EDGE_GITBOOK)
+    trovi_docs = get_gitbook_docs(TROVI_GITBOOK, skip_prefixes=("api-reference", "meta"))
+
+    all_urls = readthedocs_urls + python_chi_urls + CHAMELEON_ORG_URLS + blog_urls
+
+    print(f"  readthedocs:   {len(readthedocs_urls)} pages")
+    print(f"  python-chi:    {len(python_chi_urls)} pages")
+    print(f"  chameleon.org: {len(CHAMELEON_ORG_URLS)} pages")
+    print(f"  blog posts:    {len(blog_urls)} posts")
+    print(f"  forum topics:  {len(forum_docs)} topics")
+    print(f"  chi@edge docs: {len(chi_edge_docs)} pages")
+    print(f"  trovi docs:    {len(trovi_docs)} pages")
+    print(f"  total:         {len(all_urls) + len(forum_docs) + len(chi_edge_docs) + len(trovi_docs)} documents")
 
     docs = []
-    for url in urls:
-        doc = clean_docs(url, headers)
+    for url in all_urls:
+        doc = clean_docs(url)
         if doc:
             docs.append(doc)
+
+    docs.extend(forum_docs)
+    docs.extend(chi_edge_docs)
+    docs.extend(trovi_docs)
     return docs
 
 
 if __name__ == "__main__":
     docs = loader_docs()
+    print(f"\nSuccessfully loaded {len(docs)} documents.")
