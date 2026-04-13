@@ -96,7 +96,8 @@ def get_gitbook_docs(base_url=CHI_EDGE_GITBOOK, skip_prefixes=()):
             md_resp.raise_for_status()
             if md_resp.text.strip().startswith("# Page Not Found"):
                 continue
-            docs.append(Document(page_content=md_resp.text, metadata={"source": url}))
+            docs.append(Document(page_content=md_resp.text,
+                                 metadata={"source": url, "source_type": "gitbook"}))
         except Exception as e:
             print(f"Failed to fetch GitBook page {url}: {e}")
 
@@ -167,11 +168,28 @@ def get_forum_docs(base_url=FORUM_BASE):
                 parts.append(f"[{label}]\n{text.strip()}")
 
             content = "\n\n".join(parts)
-            docs.append(Document(page_content=content, metadata={"source": url}))
+            docs.append(Document(page_content=content,
+                                 metadata={"source": url, "source_type": "forum"}))
         except Exception as e:
             print(f"Failed to fetch forum topic {topic_id}: {e}")
 
     return docs
+
+
+def _source_type(url):
+    if "readthedocs.io" in url:
+        return "readthedocs"
+    if "python-chi" in url:
+        return "python_chi"
+    if "blog.chameleoncloud.org" in url:
+        return "blog"
+    if "forum.chameleoncloud.org" in url:
+        return "forum"
+    if "gitbook.io" in url:
+        return "gitbook"
+    if "chameleoncloud.org" in url:
+        return "chameleon_org"
+    return "other"
 
 
 def clean_docs(url):
@@ -183,15 +201,28 @@ def clean_docs(url):
         for tag in soup(["header", "footer", "nav", "aside", "script", "style"]):
             tag.decompose()
 
-        for class_name in ["toc", "toctree-wrapper", "wy-nav-side", "rst-content-toc"]:
-            for tag in soup.find_all(class_=class_name):
+        # Prefer the main content area to avoid pulling in sidebars/navigation.
+        # Sphinx/ReadTheDocs pages use div[role=main] or .rst-content; blog/org
+        # pages typically have <main> or <article>. Fall back to the whole body.
+        content_root = (
+            soup.find("div", {"role": "main"})
+            or soup.find("div", class_="rst-content")
+            or soup.find("article")
+            or soup.find("main")
+            or soup
+        )
+
+        for class_name in ["toc", "toctree-wrapper", "headerlink",
+                            "wy-nav-side", "rst-content-toc", "related-docs"]:
+            for tag in content_root.find_all(class_=class_name):
                 tag.decompose()
 
-        raw_text = soup.get_text(separator="\n")
+        raw_text = content_root.get_text(separator="\n")
         lines = [line.strip() for line in raw_text.splitlines()]
         clean_text = "\n".join(line for line in lines if line)
 
-        return Document(page_content=clean_text, metadata={"source": url})
+        return Document(page_content=clean_text,
+                        metadata={"source": url, "source_type": _source_type(url)})
 
     except Exception as e:
         print(f"Failed to process {url}: {e}")

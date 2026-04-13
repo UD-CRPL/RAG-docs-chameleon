@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loader import loader_docs
 
@@ -28,7 +28,7 @@ def get_embeddings_model():
 
 
 #splitting the texts
-def split_docs(docs, chunk_size=512, chunk_overlap=50):
+def split_docs(docs, chunk_size=1000, chunk_overlap=150):
     text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -59,9 +59,42 @@ def load_pages(save_path=VECT_STORE_PATH):
         return json.load(f)
 
 
-def load_vectorstore(save_path=VECT_STORE_PATH, k=6, fetch_k=20, search_type='mmr'):
+def load_vectorstore(save_path=VECT_STORE_PATH, k=20, fetch_k=80, search_type='mmr'):
     vectorstore = FAISS.load_local(save_path, get_embeddings_model(), allow_dangerous_deserialization=True)
     return vectorstore.as_retriever(search_type=search_type, search_kwargs={'k': k, 'fetch_k': fetch_k})
+
+
+def diversify_sources(chunks, k=6, max_per_type=2):
+    """
+    Select up to k unique source URLs from retrieved chunks, capping each
+    source_type at max_per_type to prevent any single source category from
+    dominating the context. Chunks are assumed to be ordered by MMR score so
+    we preserve relevance while enforcing breadth.
+    """
+    seen_sources = set()
+    type_counts: dict[str, int] = {}
+    selected = []
+    overflow = []
+
+    for chunk in chunks:
+        src = chunk.metadata.get('source')
+        if not src or src in seen_sources:
+            continue
+        seen_sources.add(src)
+        src_type = chunk.metadata.get('source_type', 'other')
+        if type_counts.get(src_type, 0) < max_per_type:
+            selected.append(src)
+            type_counts[src_type] = type_counts.get(src_type, 0) + 1
+        else:
+            overflow.append(src)
+
+    # Fill any remaining slots with next-best sources that were capped
+    for src in overflow:
+        if len(selected) >= k:
+            break
+        selected.append(src)
+
+    return selected[:k]
 
 
 def create_llm_chain():
@@ -80,6 +113,7 @@ def create_llm_chain():
             "Do not include URLs or source citations in your answer — relevant documentation links will be shown separately. "
             "If the answer is not in the context, say 'I don't know' and do not make up an answer."
         )),
+        MessagesPlaceholder(variable_name="history"),
         ("user", "Question: {question}\nContext: {context}")
     ])
 

@@ -26,6 +26,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    ports:
+       - "8501:8501"
     volumes:
       - vect_store:/app/vect_store
     labels:
