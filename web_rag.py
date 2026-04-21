@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from rag import load_vectorstore, load_pages, create_llm_chain, diversify_sources, VECT_STORE_PATH
+from rag import load_vectorstore, load_pages, create_llm_chain, build_context, VECT_STORE_PATH
 
 st.set_page_config(
     page_title="Chameleon Docs Assistant",
@@ -315,12 +315,8 @@ if question:
         st.markdown(question)
 
     with st.chat_message("assistant"):
-        instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
-        chunks = st.session_state.retriever.invoke(instructional_query)
-
-        seen_sources = diversify_sources(chunks, k=6, max_per_type=2)
-        context = "\n\n---\n\n".join(
-            st.session_state.pages[src] for src in seen_sources if src in st.session_state.pages
+        seen_sources, context = build_context(
+            question, st.session_state.retriever, st.session_state.pages
         )
 
         history_messages = []

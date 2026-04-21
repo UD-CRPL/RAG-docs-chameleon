@@ -97,6 +97,22 @@ def diversify_sources(chunks, k=6, max_per_type=2):
     return selected[:k]
 
 
+def build_context(
+    question: str,
+    retriever,
+    pages: dict,
+    k: int = 6,
+    max_per_type: int = 2,
+) -> tuple[list[str], str]:
+    """Retrieve and assemble context for a question. Single source of truth for
+    the instructional query prefix and diversification parameters."""
+    instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
+    chunks = retriever.invoke(instructional_query)
+    sources = diversify_sources(chunks, k=k, max_per_type=max_per_type)
+    context = "\n\n---\n\n".join(pages[src] for src in sources if src in pages)
+    return sources, context
+
+
 def create_llm_chain():
     llm = ChatOpenAI(
         model="Meta-Llama-3.3-70B-Instruct",

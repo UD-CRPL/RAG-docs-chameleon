@@ -9,3 +9,4 @@ vect_store/*
 
 # Traefik TLS certs
 letsencrypt/
+eval/.venv/*

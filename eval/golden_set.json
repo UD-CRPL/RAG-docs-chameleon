@@ -1,0 +1,122 @@
+[
+  {
+    "id": 1,
+    "category": "Factual Recall",
+    "question": "What is the purpose of the Chameleon Associate Sites?",
+    "ground_truth": "Chameleon Associate Sites are independently-owned and operated hardware resources at other institutions that are integrated into the main Chameleon testbed. Their purpose is twofold: \u00a0 \n\nFor the Chameleon Community: They expand the testbed's scale and hardware diversity, offering unique capabilities not available at the core sites. For example, the site at Northwestern University (CHI@NU) provides nodes with 100G NICs for advanced networking experiments. These resources are available to all Chameleon users through the federated login system. \u00a0 \n\nFor the Host Institution: They provide a turnkey solution for institutions to establish their own research cloud without the high cost and operational overhead of developing the infrastructure from scratch. The central Chameleon team handles user support, system upgrades, and provides a suite of operational tools, allowing the host institution to focus on managing its physical hardware. \u00a0 \n\nThis federation is made possible by CHI-in-a-Box, a distributable software package containing the entire Chameleon infrastructure stack."
+  },
+  {
+    "id": 2,
+    "category": "Factual Recall",
+    "question": "What specific model of GPU is available on the gpu_rtx_8000 nodes?",
+    "ground_truth": "The GPU available on these nodes is the NVIDIA Quadro RTX 8000. It is a high-end professional graphics card designed for complex visual computing, ray tracing, and AI workloads. Its key specifications include : \u00a0 \n\nGPU Memory: 48 GB of GDDR6 memory (scalable to 96 GB with NVLink).\n\nCUDA Cores: 4,608 for parallel computing.\n\nTensor Cores: 576 for AI and deep learning acceleration.\n\nRT Cores: 72 for hardware-accelerated, real-time ray tracing."
+  },
+  {
+    "id": 3,
+    "category": "How-To",
+    "question": "How do I create an isolated network for my instances using the GUI?",
+    "ground_truth": "You can create an isolated network, which functions as a private Layer-2 VLAN, through the Chameleon web dashboard. This allows you to run your own network services, like DHCP, without interfering with other users. Here is the step-by-step process : \u00a0 \n\nCreate the Network and Subnet:\n\nNavigate to the Network > Networks page and click the +Create Network button.\n\nIn the wizard, give your network a name.\n\nOn the Subnet tab, provide a name for the subnet and define its private IP address range in CIDR notation (e.g., 192.168.1.0/24).\n\nOn the Subnet Details tab, you can optionally configure DHCP allocation pools and specify DNS servers. Click Create to finish.\n\nCreate a Router:\n\nNavigate to the Network > Routers page and click +Create Router.\n\nGive the router a name and click Create Router.\n\nConnect the Router to the Subnet:\n\nOn the Routers page, find your new router and click on its name.\n\nGo to the Interfaces tab and click Add Interface.\n\nIn the dialog, select the subnet you created in the first step and click Submit.\n\nYour isolated network is now configured and can be attached to instances during launch"
+  },
+  {
+    "id": 4,
+    "category": "How-To",
+    "question": "How do I find and use a pre-configured Jupyter notebook on Chameleon?",
+    "ground_truth": "You can find and use pre-configured Jupyter notebooks through Trovi, Chameleon's sharing portal for reproducible experiments. \u00a0 \n\nFind the Notebook: Navigate to the Trovi portal by selecting \"Trovi\" from the \"Experiment\" dropdown menu on the main Chameleon website. Here you will see a catalog of public \"artifacts,\" which are packaged experiments often containing Jupyter notebooks, scripts, and documentation. \u00a0 \n\nUse the Notebook: Once you find an artifact you want to use, click the \"Launch on Chameleon\" button. This will open the artifact, including its Jupyter notebook, directly within Chameleon's shared JupyterHub environment, which is accessible to all users with an active project allocation. The notebook will contain the code and instructions needed to replicate the experiment. \u00a0 "
+  },
+  {
+    "id": 5,
+    "category": "Troubleshooting",
+    "question": "My bare metal node is stuck in the \"deploying\" state for a long time. What should I do?",
+    "ground_truth": "If a bare metal node remains in the \"deploying\" state for an extended period, it may be experiencing an issue during the boot or provisioning process. The recommended course of action is : \u00a0 \n\nWait: The deployment process for a physical node can sometimes take several minutes. It is advisable to wait at least 10-15 minutes to see if the process completes on its own.\n\nContact Support: If the node is still stuck after this waiting period, you should open a ticket with the Chameleon Help Desk. The operations team can investigate the underlying cause of the deployment failure and resolve the issue. "
+  },
+  {
+    "id": 6,
+    "category": "Troubleshooting",
+    "question": "I get an \"Error 403: Forbidden\" when trying to use the OpenStack CLI. What's wrong?",
+    "ground_truth": "An \"Error 403: Forbidden\" when using the OpenStack command-line interface (CLI) is most commonly caused by missing or improperly sourced credentials. \u00a0 \n\nTo use the CLI, you must first authenticate your session. This is done by sourcing an OpenStack RC script (often called a novarc file) in your terminal. This file contains the necessary environment variables (like your username, password, project ID, and authentication URL) that the CLI tools need to communicate with the Chameleon API.\n\nSolution: Ensure you have downloaded your project's OpenStack RC script from the Chameleon dashboard and have sourced it correctly in your terminal session (e.g., by running source your-project-openrc.sh) before executing any other commands."
+  },
+  {
+    "id": 7,
+    "category": "Conceptual",
+    "question": "What is \"CHI-in-a-Box\"?",
+    "ground_truth": "CHI-in-a-Box is a distributable software package that contains the complete, containerized infrastructure stack that powers the Chameleon testbed. It bundles the open-source cloud platform OpenStack with all of the Chameleon-specific customizations and operational tools needed to run a research-oriented cloud. \u00a0 \n\nThese customizations include features not found in a standard OpenStack installation, such as bare metal snapshotting, network stitching for connecting to other testbeds, and advanced hardware reservation capabilities. CHI-in-a-Box is the technology that enables other institutions to set up their own Chameleon Associate Sites, allowing them to join the federated testbed without having to develop their own complex cloud software from scratch"
+  },
+  {
+    "id": 8,
+    "category": "Conceptual",
+    "question": "What does it mean for Chameleon to support \"deep reconfigurability\"?",
+    "ground_truth": "\"Deep reconfigurability\" is the core design principle of the Chameleon testbed. It means giving researchers an unparalleled level of control over the entire software stack on physical, non-virtualized hardware. This is achieved through several key features: \u00a0 \n\nBare Metal Access: Researchers are given exclusive access to entire physical servers, ensuring that experiments are free from the performance interference (\"noise\") that can occur in shared or virtualized environments. \u00a0 \n\nFull Administrative Privileges: Users have root (sudo) access on their reserved nodes. This allows them to install a custom operating system, modify the kernel, change bootloader configurations, and access the machine's serial console. \u00a0 \n\nThis level of control is essential for many areas of computer science systems research where the experiment involves modifying the operating system itself or requires precise, repeatable performance measurements."
+  },
+  {
+    "id": 9,
+    "category": "Comparative",
+    "question": "What is the difference between a Floating IP and a Private IP?",
+    "ground_truth": "On Chameleon, Private IPs and Floating IPs serve distinct networking purposes : \u00a0 \n\nPrivate IP (Fixed IP): This is an IP address assigned to an instance for communication within Chameleon's internal network (e.g., sharednet1). It is not directly reachable from the public internet. Instances use their private IP to communicate with each other and to initiate outbound connections to the internet through a Network Address Translation (NAT) gateway. \u00a0 \n\nFloating IP: This is a publicly routable IPv4 address that can be dynamically associated with an instance. A Floating IP is required for an instance to be directly accessible from the public internet (for example, to connect via SSH from your laptop or to host a public web server). Floating IPs are a limited, shared resource, so users are encouraged to release them when they are no longer needed. "
+  },
+  {
+    "id": 10,
+    "category": "Comparative",
+    "question": "When should I use an FPGA node versus a GPU node?",
+    "ground_truth": "While the Chameleon documentation does not provide a direct comparison, the choice between an FPGA and a GPU depends on the specific requirements of your research, based on the fundamental differences in their architectures : \u00a0 \n\nUse a GPU Node for: High-throughput, data-parallel computations. GPUs contain thousands of cores optimized for performing the same operation on large amounts of data simultaneously. This makes them exceptionally well-suited for the matrix and vector operations that dominate deep learning model training and inference, scientific simulations, and high-performance computing (HPC). \u00a0 \n\nUse an FPGA Node for: Latency-critical or power-sensitive applications requiring custom hardware logic. An FPGA (Field-Programmable Gate Array) is a fabric of reconfigurable logic blocks, not a fixed set of cores. This allows you to design and implement a custom digital circuit optimized for a specific algorithm. FPGAs can offer advantages in low-latency processing (e.g., network packet processing, real-time signal processing), power efficiency, and for prototyping novel hardware accelerators before committing to a final chip design (ASIC)."
+  },
+  {
+    "id": 11,
+    "category": "Factual Recall",
+    "question": "How do I cite Chameleon in my research paper?",
+    "ground_truth": "To properly credit the Chameleon testbed in your research, you should include both an acknowledgement and a formal citation : \u00a0 \n\nAcknowledgement: Add the following sentence to your paper's acknowledgements section:\n\n\u201cResults presented in this paper were obtained using the Chameleon testbed supported by the National Science Foundation.\u201d\n\nCitation: Cite the primary Chameleon publication in your bibliography:\n\nKate Keahey, Jason Anderson, Zhuo Zhen, Pierre Riteau, Paul Ruth, Dan Stanzione, Mert Cevik, Jacob Colleran, Haryadi S. Gunawi, Cody Hammock, Joe Mambretti, Alexander Barnes, Fran\u00e7ois Halbach, Alex Rocha and Joe Stubbs. \"Lessons Learned from the Chameleon Testbed\". In Proceedings of the 2020 USENIX Annual Technical Conference (USENIX ATC '20). USENIX Association. July 2020. \u00a0 \n\nA BibTex entry for this citation is also available on the Chameleon website."
+  },
+  {
+    "id": 12,
+    "category": "How-To",
+    "question": "How do I attach a volume to my running instance?",
+    "ground_truth": "You can attach a persistent block storage volume to a running virtual machine on the KVM@TACC site. This feature is not available for bare metal nodes. The process is done through the GUI : \u00a0 \n\nNavigate to the Volumes > Volumes page in the KVM@TACC dashboard.\n\nLocate the volume you wish to attach in the list. In its \"Actions\" dropdown menu, select Manage Attachments.\n\nIn the dialog box that appears, select your running instance from the dropdown menu.\n\nClick the Attach Volume button.\n\nAfter the volume is attached, you must log in to the instance via SSH to partition, format, and mount the new block device before you can use it."
+  },
+  {
+    "id": 13,
+    "category": "Factual Recall",
+    "question": "What is the maximum duration for a single lease reservation?",
+    "ground_truth": "The standard maximum duration for a single lease reservation that can be created through the web interface is seven days. \u00a0 \n\nHowever, there is some flexibility. You can extend an active lease for another seven days as long as you do so within 48 hours of its expiration and no other user has already reserved the hardware for that time. In exceptional circumstances where a longer, continuous reservation is required for an experiment, you can open a ticket with the help desk to request a special exception."
+  },
+  {
+    "id": 14,
+    "category": "Negative Question",
+    "question": "Can I use my Chameleon allocation to mine cryptocurrency?",
+    "ground_truth": "No, you cannot. Chameleon's Acceptable Use Policy explicitly prohibits running applications that mine cryptocurrency or use blockchain technology for personal financial gain. \u00a0 \n\nAs a publicly funded research instrument supported by the National Science Foundation, Chameleon resources must be used exclusively for research and educational work. Cryptocurrency mining is considered a commercial or personal-gain activity that consumes significant resources and is therefore outside the testbed's mission. An exception may be granted for legitimate  \u00a0 \n\nresearch into blockchain technology, but this requires advance, explicit approval from the Chameleon team."
+  },
+  {
+    "id": 15,
+    "category": "Complex Query",
+    "question": "How can I set up an experiment that requires a specific kernel version on a bare metal node?",
+    "ground_truth": "Chameleon's support for \"deep reconfigurability\" allows you to install and boot from a custom kernel on a bare metal node. The general process is as follows : \u00a0 \n\nLaunch an Instance: Start by launching an instance from a \"whole disk image.\" Most of the standard Chameleon-provided OS images (e.g., CC-Ubuntu20.04) are whole disk images suitable for this purpose.\n\nInstall Your Kernel: Once the instance is running, connect to it via SSH. Transfer your custom kernel and its associated modules to the instance and install them.\n\nModify the Bootloader: With root privileges, edit the bootloader configuration file (e.g., /boot/grub2/grub.cfg). Add a new menu entry that points to your new kernel and ramdisk files. You can also specify any custom kernel command-line parameters in this entry.\n\nReboot: Reboot the node. It will now boot using your specified custom kernel.\n\nNote that for the cc-snapshot tool to work correctly with your custom environment, the size of your kernel's modules directory (/lib/modules/<kernel_version>) must be less than 4GB. "
+  },
+  {
+    "id": 16,
+    "category": "Conceptual",
+    "question": "What is the Trovi artifacts repository?",
+    "ground_truth": "Trovi is Chameleon's sharing portal and repository for digital research artifacts. Its primary purpose is to facilitate  \u00a0 \n\nreproducible science by allowing users to package, share, and discover complete experiments. \u00a0 \n\nAn artifact in Trovi is more than just code; it's a \"compute capsule\" that can contain a collection of components, including : \u00a0 \n\nJupyter notebooks that orchestrate the experiment.\n\nLinks to the specific custom disk images needed.\n\nHeat orchestration templates for multi-node deployments.\n\nDatasets and documentation.\n\nThis packaging allows another researcher to find an experiment on Trovi and, with a single click, launch it directly on Chameleon to verify, replicate, or build upon the work."
+  },
+  {
+    "id": 17,
+    "category": "How-To",
+    "question": "How do I launch multiple nodes with one command using Heat templates?",
+    "ground_truth": "You can automate the deployment of complex, multi-node topologies using OpenStack's Heat orchestration service. The process uses a declarative YAML file called a Heat Orchestration Template (HOT). \u00a0 \n\nHere is the workflow to launch a multi-node \"stack\" : \u00a0 \n\nCreate a Reservation: First, you must have an active lease with enough nodes to accommodate your entire deployment (e.g., if your template defines 1 server and 3 clients, you need a reservation for at least 4 nodes).\n\nNavigate to Orchestration: In the Chameleon dashboard, go to Project > Orchestration > Stacks.\n\nLaunch Stack: Click the Launch Stack button.\n\nSelect Template: Specify your Heat template. You can upload the YAML file, paste its contents directly, or provide a URL to a template hosted online.\n\nEnter Parameters: The interface will prompt you to enter values for any parameters defined in the template. This will always include a name for the stack, your password, the ID of your reservation, and an SSH key. It may also include custom parameters, like the number of client nodes to create.\n\nLaunch: Click Launch. Heat will then automatically provision all the resources\u2014instances, networks, routers, etc.\u2014as defined in your template."
+  },
+  {
+    "id": 18,
+    "category": "Factual Recall",
+    "question": "Where are the main Chameleon hardware sites located?",
+    "ground_truth": "The main physical hardware sites for the Chameleon testbed are : \u00a0 \n\nCHI@TACC: Located at the Texas Advanced Computing Center (TACC) in Austin, Texas. This is the largest site and hosts the bulk of the large-scale compute resources.\n\nCHI@UC: Hosted at the University of Chicago in Chicago, Illinois. This site has a focus on networking research and hosts a diverse range of GPUs and FPGAs.\n\nCHI@NCAR: Situated at the National Center for Atmospheric Research in Boulder, Colorado. This site provides access to alternative processor architectures, such as ARM.\n\nIn addition, Chameleon includes a virtualized cloud, KVM@TACC, and a geographically distributed testbed for edge computing, CHI@Edge"
+  },
+  {
+    "id": 19,
+    "category": "Troubleshooting",
+    "question": "Why can't my instance access the internet, even with a floating IP?",
+    "ground_truth": "The most common reason an instance with a floating IP cannot be accessed from the internet is due to the host-based firewall running on the instance itself. \u00a0 \n\nChameleon's supported operating system images (like Ubuntu and CentOS) are pre-configured with firewalld enabled by default for security. This firewall has restrictive rules that block most incoming connections from the public internet. \u00a0 \n\nTo solve this, you must connect to your instance (e.g., via the web-based console) and explicitly open the ports for the services you need. For example, to allow incoming HTTP traffic, you would run a command like:\nsudo firewall-cmd --zone=public --add-service=http --permanent\nFollowed by:\nsudo firewall-cmd --reload"
+  },
+  {
+    "id": 20,
+    "category": "Complex Query",
+    "question": "How can I repeat a networking experiment I found on the Chameleon blog to ensure reproducibility?",
+    "ground_truth": "Chameleon provides a complete ecosystem to ensure experiments can be easily reproduced. If an experiment from the blog was packaged for reproducibility, the process would be : \u00a0 \n\nFind the Artifact on Trovi: The experiment should be packaged as an \"artifact\" on the Trovi sharing portal. This artifact bundles all the necessary components: the Jupyter notebook that orchestrates the experiment, links to the custom disk images containing the required software, and any necessary configuration scripts or data. \u00a0 \n\nLaunch the Jupyter Notebook: From the Trovi page, you can launch the artifact directly into Chameleon's Jupyter environment.\n\nExecute the Notebook: The notebook will contain executable code cells that use Chameleon's Python library (python-chi) to programmatically handle the entire experimental lifecycle. This includes reserving the correct type of hardware, launching instances from the specific custom image, configuring the required networking (e.g., isolated VLANs), running the experiment, and collecting the results. \u00a0 \n\nUse Daypass for Access (if needed): If you don't have a Chameleon account, the experiment's author can grant you temporary, scoped access to the testbed using the Daypass feature, allowing you to run the artifact and reproduce the results"
+  }
+]

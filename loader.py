@@ -16,7 +16,6 @@ TROVI_GITBOOK = "https://chameleoncloud.gitbook.io/trovi"
 CHAMELEON_ORG_URLS = [
     "https://chameleoncloud.org/learn/frequently-asked-questions/",
     "https://chameleoncloud.org/about/chameleon/",
-    "https://chameleoncloud.org/experiment/sites/",
     "https://chameleoncloud.org/hardware/",
     "https://chameleoncloud.org/experiment/chiedge/",
     "https://chameleoncloud.org/experiment/chiedge/hardware-info/",
