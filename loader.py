@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from urllib.parse import urljoin
 from langchain_core.documents import Document
@@ -29,6 +30,29 @@ BLOG_CATEGORIES = {"tips-and-tricks", "chameleon-changelog", "featured"}
 
 # Forum posts (high-value Q&A)
 FORUM_BASE = "https://forum.chameleoncloud.org"
+
+
+def _fetch(url, timeout=15, retries=3):
+    """GET with simple exponential backoff."""
+    for attempt in range(retries):
+        try:
+            resp = requests.get(url, headers=headers, timeout=timeout)
+            resp.raise_for_status()
+            return resp
+        except requests.exceptions.RequestException as e:
+            if attempt == retries - 1:
+                raise
+            time.sleep(2 ** attempt)
+
+
+SOURCE_TYPE_LABELS = {
+    "readthedocs": "Chameleon Docs",
+    "python_chi":  "Python CHI",
+    "blog":        "Chameleon Blog",
+    "forum":       "Community Forum",
+    "gitbook":     "CHI@Edge/Trovi Docs",
+    "chameleon_org": "Chameleon Cloud",
+}
 
 
 def get_readthedocs_urls(base_url):
@@ -95,8 +119,13 @@ def get_gitbook_docs(base_url=CHI_EDGE_GITBOOK, skip_prefixes=()):
             md_resp.raise_for_status()
             if md_resp.text.strip().startswith("# Page Not Found"):
                 continue
+            title = ""
+            for line in md_resp.text.splitlines():
+                if line.startswith("# "):
+                    title = line[2:].strip()
+                    break
             docs.append(Document(page_content=md_resp.text,
-                                 metadata={"source": url, "source_type": "gitbook"}))
+                                 metadata={"source": url, "source_type": "gitbook", "title": title}))
         except Exception as e:
             print(f"Failed to fetch GitBook page {url}: {e}")
 
@@ -110,10 +139,9 @@ def get_blog_urls(base_url=BLOG_BASE, categories=BLOG_CATEGORIES):
     while True:
         listing_url = base_url if page == 1 else f"{base_url}/page/{page}/"
         try:
-            resp = requests.get(listing_url, headers=headers, timeout=10)
+            resp = _fetch(listing_url, timeout=20)
             if resp.status_code == 404:
                 break
-            resp.raise_for_status()
             soup = BeautifulSoup(resp.text, "html.parser")
 
             # Collect post URLs and their categories from this page
@@ -168,7 +196,7 @@ def get_forum_docs(base_url=FORUM_BASE):
 
             content = "\n\n".join(parts)
             docs.append(Document(page_content=content,
-                                 metadata={"source": url, "source_type": "forum"}))
+                                 metadata={"source": url, "source_type": "forum", "title": title}))
         except Exception as e:
             print(f"Failed to fetch forum topic {topic_id}: {e}")
 
@@ -220,42 +248,64 @@ def clean_docs(url):
         lines = [line.strip() for line in raw_text.splitlines()]
         clean_text = "\n".join(line for line in lines if line)
 
+        h1 = content_root.find("h1")
+        if h1:
+            title = h1.get_text(strip=True)
+        elif soup.find("title"):
+            raw_title = soup.find("title").get_text(strip=True)
+            title = raw_title.split(" — ")[0].split(" | ")[0].strip()
+        else:
+            title = ""
+
         return Document(page_content=clean_text,
-                        metadata={"source": url, "source_type": _source_type(url)})
+                        metadata={"source": url, "source_type": _source_type(url), "title": title})
 
     except Exception as e:
         print(f"Failed to process {url}: {e}")
         return None
 
 
+def fetch_readthedocs():
+    urls = get_readthedocs_urls(READTHEDOCS_BASE) + get_python_chi_urls(PYTHON_CHI_BASE)
+    return [d for url in urls if (d := clean_docs(url))]
+
+
+def fetch_chameleon_org():
+    return [d for url in CHAMELEON_ORG_URLS if (d := clean_docs(url))]
+
+
+def fetch_blog():
+    urls = get_blog_urls()
+    return [d for url in urls if (d := clean_docs(url))]
+
+
+def fetch_forum():
+    return get_forum_docs()
+
+
+def fetch_gitbook():
+    return (
+        get_gitbook_docs(CHI_EDGE_GITBOOK)
+        + get_gitbook_docs(TROVI_GITBOOK, skip_prefixes=("api-reference", "meta"))
+    )
+
+
+# Registry used by build_index.py for per-source checkpointing
+SOURCES = {
+    "readthedocs": fetch_readthedocs,
+    "chameleon_org": fetch_chameleon_org,
+    "blog": fetch_blog,
+    "forum": fetch_forum,
+    "gitbook": fetch_gitbook,
+}
+
+
 def loader_docs():
-    readthedocs_urls = get_readthedocs_urls(READTHEDOCS_BASE)
-    python_chi_urls = get_python_chi_urls(PYTHON_CHI_BASE)
-    blog_urls = get_blog_urls()
-    forum_docs = get_forum_docs()
-    chi_edge_docs = get_gitbook_docs(CHI_EDGE_GITBOOK)
-    trovi_docs = get_gitbook_docs(TROVI_GITBOOK, skip_prefixes=("api-reference", "meta"))
-
-    all_urls = readthedocs_urls + python_chi_urls + CHAMELEON_ORG_URLS + blog_urls
-
-    print(f"  readthedocs:   {len(readthedocs_urls)} pages")
-    print(f"  python-chi:    {len(python_chi_urls)} pages")
-    print(f"  chameleon.org: {len(CHAMELEON_ORG_URLS)} pages")
-    print(f"  blog posts:    {len(blog_urls)} posts")
-    print(f"  forum topics:  {len(forum_docs)} topics")
-    print(f"  chi@edge docs: {len(chi_edge_docs)} pages")
-    print(f"  trovi docs:    {len(trovi_docs)} pages")
-    print(f"  total:         {len(all_urls) + len(forum_docs) + len(chi_edge_docs) + len(trovi_docs)} documents")
-
     docs = []
-    for url in all_urls:
-        doc = clean_docs(url)
-        if doc:
-            docs.append(doc)
-
-    docs.extend(forum_docs)
-    docs.extend(chi_edge_docs)
-    docs.extend(trovi_docs)
+    for name, fetch_fn in SOURCES.items():
+        source_docs = fetch_fn()
+        print(f"  {name}: {len(source_docs)} documents")
+        docs.extend(source_docs)
     return docs
 
 

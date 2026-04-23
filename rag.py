@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_community.document_compressors.flashrank_rerank import FlashrankRerank
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loader import loader_docs
@@ -41,9 +40,7 @@ CHILD_SPLITTER = RecursiveCharacterTextSplitter(
 
 
 def create_vectorstore(docs, save_path=VECT_STORE_PATH):
-    if os.path.exists(save_path):
-        for f in os.listdir(save_path):
-            os.remove(os.path.join(save_path, f))
+    os.makedirs(save_path, exist_ok=True)
 
     parent_chunks = PARENT_SPLITTER.split_documents(docs)
 
@@ -56,8 +53,13 @@ def create_vectorstore(docs, save_path=VECT_STORE_PATH):
             "source": parent.metadata.get("source", ""),
             "source_type": parent.metadata.get("source_type", "other"),
         }
+        title = parent.metadata.get("title", "")
+        src_type = parent.metadata.get("source_type", "")
+        header = f"[{src_type}: {title}]\n" if title else f"[{src_type}]\n" if src_type else ""
+
         children = CHILD_SPLITTER.split_documents([parent])
         for child in children:
+            child.page_content = header + child.page_content
             child.metadata["parent_id"] = parent_id
             child_docs.append(child)
 
@@ -77,16 +79,6 @@ def load_parents(save_path=VECT_STORE_PATH):
 def load_vectorstore(save_path=VECT_STORE_PATH, k=20, fetch_k=80, search_type='mmr'):
     vectorstore = FAISS.load_local(save_path, get_embeddings_model(), allow_dangerous_deserialization=True)
     return vectorstore.as_retriever(search_type=search_type, search_kwargs={'k': k, 'fetch_k': fetch_k})
-
-
-_reranker: FlashrankRerank | None = None
-
-
-def get_reranker() -> FlashrankRerank:
-    global _reranker
-    if _reranker is None:
-        _reranker = FlashrankRerank(top_n=20)
-    return _reranker
 
 
 PRIMARY_SOURCE_TYPES = {"readthedocs", "blog"}
@@ -136,7 +128,6 @@ def build_context(
     """Retrieve and assemble context for a question."""
     instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
     chunks = retriever.invoke(instructional_query)
-    chunks = get_reranker().compress_documents(chunks, question)
     selected = diversify_sources(chunks, k=k)
     sources = [c.metadata['source'] for c in selected if c.metadata.get('source')]
     context = "\n\n---\n\n".join(

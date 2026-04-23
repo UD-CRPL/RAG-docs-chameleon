@@ -5,6 +5,8 @@ import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
 from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH
 
+FEEDBACK_FORM_URL = "https://forms.gle/YOUR_FORM_ID"
+
 st.set_page_config(
     page_title="Chameleon Docs Assistant",
     page_icon="https://chameleoncloud.org/static/images/favicon.ico",
@@ -154,6 +156,36 @@ st.markdown("""
         vertical-align: middle;
     }
 
+    /* ── Disclaimer banner ── */
+    .cc-disclaimer {
+        background: #fffbeb;
+        border-bottom: 1px solid #f6d860;
+        padding: 9px 28px;
+        font-size: 13px;
+        color: #78580a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .cc-disclaimer-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cc-disclaimer-icon {
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+    .cc-disclaimer a {
+        color: #b45309;
+        font-weight: 600;
+        text-decoration: underline;
+        white-space: nowrap;
+    }
+    .cc-disclaimer a:hover { color: #92400e; }
+
     /* ── Footer ── */
     .cc-footer {
         text-align: center;
@@ -178,6 +210,19 @@ st.markdown("""
         <a href="https://chameleoncloud.org/user/help/" target="_blank">Help Desk</a>
         <a href="https://www.chameleoncloud.org/login/" target="_blank">Login</a>
     </div>
+</div>
+""", unsafe_allow_html=True)
+
+st.markdown(f"""
+<div class="cc-disclaimer">
+    <div class="cc-disclaimer-text">
+        <span class="cc-disclaimer-icon">⚠️</span>
+        <span><strong>Testing purposes only.</strong>
+        This assistant is experimental and may produce inaccurate or incomplete answers.
+        Always verify important information against the
+        <a href="https://chameleoncloud.readthedocs.io/en/latest/" target="_blank">official documentation</a>.</span>
+    </div>
+    <a href="{FEEDBACK_FORM_URL}" target="_blank">Submit feedback →</a>
 </div>
 """, unsafe_allow_html=True)
 
@@ -343,10 +388,11 @@ if question:
 
 
 # ── Footer ──
-st.markdown("""
+st.markdown(f"""
 <div class="cc-footer">
     Chameleon Docs Assistant &nbsp;·&nbsp;
     <a href="https://chameleoncloud.org" target="_blank">chameleoncloud.org</a>
     &nbsp;·&nbsp; Powered by <a href="https://ai.tejas.tacc.utexas.edu" target="_blank">Tejas AI</a>
+    &nbsp;·&nbsp; <a href="{FEEDBACK_FORM_URL}" target="_blank">Submit feedback</a>
 </div>
 """, unsafe_allow_html=True)
