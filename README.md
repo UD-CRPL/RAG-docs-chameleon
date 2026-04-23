@@ -1,82 +1,116 @@
-This repository provides a primary Retrieval-Augmented Generation (RAG) pipeline for answering questions about Chameleon Cloud documentation. The repo includes files that build a vector store by indexing, ask users questions, and retrieve information from provided sources. 
+# Chameleon Docs Assistant
 
-Prerequisites
-----------
-1. Operating System: The code is written for Linux operating systems.
-2. Python: Ensure you have Python 3.11 or higher installed.
-3. Virtual Environment: It is necessary to use a virtual environment (venv) to manage dependencies.
+A Retrieval-Augmented Generation (RAG) chatbot that answers questions about the [Chameleon Cloud](https://chameleoncloud.org) testbed. It indexes documentation from multiple official sources and serves a Streamlit web UI backed by a Llama 3.3 70B language model via the [Tejas AI](https://ai.tejas.tacc.utexas.edu) API.
 
-Setup
------
-1. Clone the Repository:
+## Architecture
 
-    ```
-        git clone <repository_url>
-    ```
+**Indexing** — `build_index.py` crawls documentation from ReadTheDocs, GitBook, the Chameleon blog, the community forum, and chameleoncloud.org. Documents are split into large parent chunks (~2000 chars) for context and small child chunks (~400 chars) for embedding. Child chunks are indexed in a FAISS vector store; parent content is stored in `parents.json`.
 
-2. Create and activate a virtual environment using Conda:
+**Retrieval** — Incoming questions are embedded with E5-Mistral-7B-Instruct and matched against child chunks using MMR search. The top results are deduplicated by parent ID and filtered for source diversity, then the corresponding parent chunks are assembled as context for the LLM.
 
-    ``` 
-        # Download and install Conda
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-        bash Miniconda3-latest-Linux-x86_64.sh
-        
-        # Create a new environment named 'rag' with Python 3.11
-        conda create --name rag python=3.11
+**Generation** — Meta-Llama-3.3-70B-Instruct generates answers strictly from the retrieved context. Conversation history (last 3 turns) is included for multi-turn use.
 
-        # Activate your new environment
-        conda activate rag
-    ```
+**Deployment** — Docker Compose runs the Streamlit app behind a Traefik reverse proxy with automatic TLS.
 
-3. Install `faiss-gpu` from the pytorch channel:
+## Prerequisites
 
-    
-    ```
-        conda install -c pytorch faiss-gpu
+- Docker and Docker Compose
+- A [Tejas AI](https://ai.tejas.tacc.utexas.edu) API key
+- A domain name (for TLS via Let's Encrypt)
+
+## Setup
+
+1. Clone the repository:
+
+    ```bash
+    git clone <repository_url>
+    cd RAG-docs-chameleon
     ```
 
-4. Run requirements.txt:
+2. Create a `.env` file in the root directory:
 
     ```
-        pip install -r requirements.txt
+    TEJAS_API_KEY=<your_tejas_api_key>
+    HOST=<your_domain>
+    EMAIL=<your_email_for_letsencrypt>
     ```
 
-5. Install Llama 3.1:
+3. Start the stack:
 
-    ```
-        curl -fsSL https://ollama.com/install.sh | sh
-
-        sudo systemctl start ollama
-
-        ollama pull llama3.1
+    ```bash
+    docker compose up -d
     ```
 
-6. Add a `.env` file in the root directory with the following content:
+4. Build the vector index (first run only, or after doc updates):
 
+    ```bash
+    docker exec rag-docs-chameleon-rag-app-1 python build_index.py
     ```
-    HUGGINGFACE_API_KEY=<your_huggingface_api_key>
-    ```
 
-Execution
----------
+    This fetches all documentation sources, builds the FAISS index, and saves it to the `vect_store` Docker volume. It takes several minutes on first run.
 
-You can run rag.py script using the command line:
+5. The web UI is available at `https://<your_domain>`.
 
-1. Basic Execusion:
+## Updating the index
 
-``` 
-    python rag.py
+Re-run `build_index.py` inside the container whenever you want to refresh the documentation:
+
+```bash
+docker exec rag-docs-chameleon-rag-app-1 python build_index.py
+docker restart rag-docs-chameleon-rag-app-1
 ```
 
-2. Using streamlit:
+## Local development
 
+To run outside Docker, install dependencies and set up your `.env`:
+
+```bash
+pip install -r requirements.txt
 ```
-    pip install streamlit
- 
-    streamlit run web_rag.py
+
+Build the index:
+
+```bash
+python build_index.py
 ```
 
-Hardware Requirements
----------------------
+Run the web UI:
 
-We ran rag.py on a Chameleon Cloud KVM-based VM with one NVIDIA H100 GPU.  
+```bash
+streamlit run web_rag.py
+```
+
+Or use the CLI:
+
+```bash
+python rag.py
+```
+
+## Evaluation
+
+A golden question set and scoring pipeline are in `eval/`. To run an evaluation:
+
+```bash
+# Inside the container
+docker exec rag-docs-chameleon-rag-app-1 python eval/run_pipeline.py
+
+# Copy results out
+docker cp rag-docs-chameleon-rag-app-1:/app/eval/results/ eval/results/
+
+# Score locally (uses the eval venv)
+eval/.venv/bin/python eval/score.py eval/results/run_<timestamp>.json --csv eval/results/scores.csv
+```
+
+Scoring uses cosine similarity between E5-Mistral embeddings of the generated and ground-truth answers. Results are appended to the CSV for comparison across runs.
+
+## Documentation sources
+
+| Source | Type |
+|---|---|
+| [chameleoncloud.readthedocs.io](https://chameleoncloud.readthedocs.io/en/latest/) | Primary docs |
+| [python-chi.readthedocs.io](https://python-chi.readthedocs.io/en/latest/) | Python API docs |
+| [chameleoncloud.gitbook.io/chi-edge](https://chameleoncloud.gitbook.io/chi-edge) | CHI@Edge docs |
+| [chameleoncloud.gitbook.io/trovi](https://chameleoncloud.gitbook.io/trovi) | Trovi artifact docs |
+| [blog.chameleoncloud.org](https://blog.chameleoncloud.org) | Tips, changelogs, featured posts |
+| [forum.chameleoncloud.org](https://forum.chameleoncloud.org) | Community Q&A |
+| [chameleoncloud.org](https://chameleoncloud.org) | FAQ, hardware, about pages |
