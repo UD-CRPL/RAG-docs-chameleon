@@ -4,9 +4,9 @@ A Retrieval-Augmented Generation (RAG) chatbot that answers questions about the 
 
 ## Architecture
 
-**Indexing** — `build_index.py` crawls documentation from ReadTheDocs, GitBook, the Chameleon blog, the community forum, and chameleoncloud.org. Documents are split into large parent chunks (~2000 chars) for context and small child chunks (~400 chars) for embedding. Child chunks are indexed in a FAISS vector store; parent content is stored in `parents.json`.
+**Indexing** — `build_index.py` crawls documentation from ReadTheDocs, GitBook, the Chameleon blog, the community forum, and chameleoncloud.org. Each source is fetched independently and checkpointed to `_fetch_cache/` before anything is embedded, so a single source failure doesn't abort the run. Documents are split into large parent chunks (~2000 chars) for context and small child chunks (~400 chars) for embedding. Each child chunk is prefixed with a `[source_type: page title]` header so the embedding captures document-level context. Child chunks are indexed in a FAISS vector store; parent content is stored in `parents.json`. The new index is built in a temporary directory and atomically swapped into place only after the full build succeeds.
 
-**Retrieval** — Incoming questions are embedded with E5-Mistral-7B-Instruct and matched against child chunks using MMR search. The top results are deduplicated by parent ID and filtered for source diversity, then the corresponding parent chunks are assembled as context for the LLM.
+**Retrieval** — Incoming questions are embedded with E5-Mistral-7B-Instruct and matched against child chunks using MMR search. Results are deduplicated by parent ID and passed through a source-priority filter: readthedocs and blog chunks fill context slots first, with specialized sources (forum, gitbook, etc.) only included if slots remain. The corresponding parent chunks are then assembled as context for the LLM.
 
 **Generation** — Meta-Llama-3.3-70B-Instruct generates answers strictly from the retrieved context. Conversation history (last 3 turns) is included for multi-turn use.
 
@@ -47,7 +47,7 @@ A Retrieval-Augmented Generation (RAG) chatbot that answers questions about the 
     docker exec rag-docs-chameleon-rag-app-1 python build_index.py
     ```
 
-    This fetches all documentation sources, builds the FAISS index, and saves it to the `vect_store` Docker volume. It takes several minutes on first run.
+    This fetches all documentation sources, checkpoints each to `_fetch_cache/`, builds the FAISS index, and atomically swaps it into the `vect_store` Docker volume. It takes several minutes on first run.
 
 5. The web UI is available at `https://<your_domain>`.
 
@@ -56,7 +56,15 @@ A Retrieval-Augmented Generation (RAG) chatbot that answers questions about the 
 Re-run `build_index.py` inside the container whenever you want to refresh the documentation:
 
 ```bash
+# Re-fetch all sources and rebuild
 docker exec rag-docs-chameleon-rag-app-1 python build_index.py
+
+# Skip fetching, embed from existing cache (useful if the embedding API was down during a prior run)
+docker exec rag-docs-chameleon-rag-app-1 python build_index.py --use-cache
+
+# Re-fetch only specific sources, use cache for the rest
+docker exec rag-docs-chameleon-rag-app-1 python build_index.py --refresh blog forum
+
 docker restart rag-docs-chameleon-rag-app-1
 ```
 

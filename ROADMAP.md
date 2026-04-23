@@ -3,7 +3,10 @@
 ## Completed
 
 - **Parent document retrieval** — two-level chunking (400-char child chunks for FAISS, 2000-char parent chunks for context). Replaced earlier approach of returning entire pages as context.
-- **Source diversity filter** — MMR retrieval + deduplication by parent ID with per-source-type cap.
+- **Source diversity filter** — MMR retrieval + deduplication by parent ID. Primary sources (readthedocs, blog) fill context slots first; specialized sources (forum, gitbook, etc.) only included if slots remain, capped at one chunk per type. Replaced earlier flat `max_per_type` cap.
+- **Contextual chunk headers** — each child chunk is prefixed with `[source_type: page title]` at index time so the embedding captures document-level context. Page titles extracted from `<h1>` tags (HTML), first `# heading` (Markdown), and topic title (forum). Requires reindex.
+- **Robust indexing pipeline** — two-phase fetch→embed with per-source JSON checkpointing in `_fetch_cache/`. A source failure no longer aborts the run; prior cache is used as fallback. New index built to a temp directory and atomically swapped into place. `--use-cache` and `--refresh <source>` flags added.
+- **Blog fetch retry** — exponential backoff on blog listing page requests to fix intermittent timeouts that were silently dropping all blog posts.
 - **Evaluation pipeline** — golden set of 20 questions, semantic similarity scoring via E5-Mistral embeddings, CSV comparison across runs.
 
 ---
@@ -11,7 +14,7 @@
 ## In Progress
 
 ### Priority 2 — Cross-encoder reranker
-After MMR retrieval returns ~20 child chunks, re-score them using a cross-encoder that jointly encodes the question and each chunk. Much more accurate than embedding cosine similarity for ranking. Candidate: `FlashrankRerank` from `langchain_community` (runs locally, no extra API calls).
+Tried `FlashrankRerank` (ms-marco-MiniLM-L-12-v2) from `langchain_community`. Removed — the model was trained on web search passages and actively mis-ranked technical documentation, producing noticeably worse answers. May be worth revisiting with a domain-appropriate model, but deprioritized for now.
 
 ### Priority 3 — Hybrid search (BM25 + dense)
 Dense embeddings miss exact keyword matches (CLI flags, function names, model names). BM25 is strong for these. Merge both rankings with Reciprocal Rank Fusion via LangChain's `EnsembleRetriever`. Requires adding `rank_bm25` and persisting the BM25 index alongside FAISS. **Requires reindex.**
@@ -24,9 +27,7 @@ Prepend each chunk with its source page title and section heading during indexin
 ## Known Issues / Tech Debt
 
 **Indexing**
-- Blog fetching is intermittent — the blog listing page times out occasionally, silently dropping all blog posts from the index. Needs retry logic or a cached fallback in `loader.py`.
 - Forum indexing only fetches the `latest.json` endpoint (~30 topics). The full forum archive is not indexed.
-- `build_index.py` re-fetches everything from scratch on every run. No incremental updates — if one source fails mid-run, nothing is saved. A two-phase approach (fetch → embed) with checkpointing would be more robust.
 
 **Retrieval**
 - Parent chunk size (2000 chars) and child chunk size (400 chars) were chosen heuristically. No systematic tuning has been done. How-To and Troubleshooting categories are still below the original full-page baseline — chunk sizes may need adjustment per source type.
