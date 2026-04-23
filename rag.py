@@ -1,6 +1,5 @@
 import os
 import json
-import shutil
 from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -27,35 +26,50 @@ def get_embeddings_model():
     )
 
 
-#splitting the texts
-def split_docs(docs, chunk_size=1000, chunk_overlap=150):
-    text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            separators=["\n### ", "\n#### ", "\n", " ", ""]
-    )
-    return text_splitter.split_documents(docs)
+PARENT_SPLITTER = RecursiveCharacterTextSplitter(
+    chunk_size=2000,
+    chunk_overlap=200,
+    separators=["\n## ", "\n### ", "\n#### ", "\n", " ", ""]
+)
+
+CHILD_SPLITTER = RecursiveCharacterTextSplitter(
+    chunk_size=400,
+    chunk_overlap=50,
+    separators=["\n### ", "\n#### ", "\n", " ", ""]
+)
 
 
 def create_vectorstore(docs, save_path=VECT_STORE_PATH):
-    """Build FAISS index from small chunks and save full pages alongside it."""
     if os.path.exists(save_path):
         for f in os.listdir(save_path):
             os.remove(os.path.join(save_path, f))
 
-    # Save full pages keyed by source URL for context retrieval
-    pages = {doc.metadata["source"]: doc.page_content for doc in docs if doc.metadata.get("source")}
-    with open(os.path.join(save_path, "pages.json"), "w") as f:
-        json.dump(pages, f)
+    parent_chunks = PARENT_SPLITTER.split_documents(docs)
 
-    chunks = split_docs(docs)
-    vectorstore = FAISS.from_documents(documents=chunks, embedding=get_embeddings_model())
+    parents = {}
+    child_docs = []
+    for i, parent in enumerate(parent_chunks):
+        parent_id = str(i)
+        parents[parent_id] = {
+            "content": parent.page_content,
+            "source": parent.metadata.get("source", ""),
+            "source_type": parent.metadata.get("source_type", "other"),
+        }
+        children = CHILD_SPLITTER.split_documents([parent])
+        for child in children:
+            child.metadata["parent_id"] = parent_id
+            child_docs.append(child)
+
+    with open(os.path.join(save_path, "parents.json"), "w") as f:
+        json.dump(parents, f)
+
+    vectorstore = FAISS.from_documents(documents=child_docs, embedding=get_embeddings_model())
     vectorstore.save_local(save_path)
     return vectorstore
 
 
-def load_pages(save_path=VECT_STORE_PATH):
-    with open(os.path.join(save_path, "pages.json")) as f:
+def load_parents(save_path=VECT_STORE_PATH):
+    with open(os.path.join(save_path, "parents.json")) as f:
         return json.load(f)
 
 
@@ -66,33 +80,31 @@ def load_vectorstore(save_path=VECT_STORE_PATH, k=20, fetch_k=80, search_type='m
 
 def diversify_sources(chunks, k=6, max_per_type=2):
     """
-    Select up to k unique source URLs from retrieved chunks, capping each
-    source_type at max_per_type to prevent any single source category from
-    dominating the context. Chunks are assumed to be ordered by MMR score so
-    we preserve relevance while enforcing breadth.
+    Select up to k chunks with unique parent IDs, capping each source_type at
+    max_per_type. Chunks are assumed ordered by MMR score so relevance is
+    preserved while enforcing breadth.
     """
-    seen_sources = set()
+    seen_parents = set()
     type_counts: dict[str, int] = {}
     selected = []
     overflow = []
 
     for chunk in chunks:
-        src = chunk.metadata.get('source')
-        if not src or src in seen_sources:
+        parent_id = chunk.metadata.get('parent_id')
+        if not parent_id or parent_id in seen_parents:
             continue
-        seen_sources.add(src)
+        seen_parents.add(parent_id)
         src_type = chunk.metadata.get('source_type', 'other')
         if type_counts.get(src_type, 0) < max_per_type:
-            selected.append(src)
+            selected.append(chunk)
             type_counts[src_type] = type_counts.get(src_type, 0) + 1
         else:
-            overflow.append(src)
+            overflow.append(chunk)
 
-    # Fill any remaining slots with next-best sources that were capped
-    for src in overflow:
+    for chunk in overflow:
         if len(selected) >= k:
             break
-        selected.append(src)
+        selected.append(chunk)
 
     return selected[:k]
 
@@ -100,16 +112,20 @@ def diversify_sources(chunks, k=6, max_per_type=2):
 def build_context(
     question: str,
     retriever,
-    pages: dict,
+    parents: dict,
     k: int = 6,
     max_per_type: int = 2,
 ) -> tuple[list[str], str]:
-    """Retrieve and assemble context for a question. Single source of truth for
-    the instructional query prefix and diversification parameters."""
+    """Retrieve and assemble context for a question."""
     instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
     chunks = retriever.invoke(instructional_query)
-    sources = diversify_sources(chunks, k=k, max_per_type=max_per_type)
-    context = "\n\n---\n\n".join(pages[src] for src in sources if src in pages)
+    selected = diversify_sources(chunks, k=k, max_per_type=max_per_type)
+    sources = [c.metadata['source'] for c in selected if c.metadata.get('source')]
+    context = "\n\n---\n\n".join(
+        parents[c.metadata['parent_id']]['content']
+        for c in selected
+        if c.metadata.get('parent_id') in parents
+    )
     return sources, context
 
 
@@ -140,11 +156,10 @@ def main():
     if not os.path.exists(VECT_STORE_PATH):
         print("No vector store found. Building index from docs...")
         docs = loader_docs()
-        chunks = split_docs(docs)
-        print(f"Number of chunks: {len(chunks)}")
-        create_vectorstore(chunks)
+        create_vectorstore(docs)
 
     retriever = load_vectorstore()
+    parents = load_parents()
     chain = create_llm_chain()
 
     print("Type 'exit' to quit.")
@@ -152,15 +167,12 @@ def main():
         query = input("\nPlease enter a question: ")
         if query == "exit":
             break
-        instructional_query = f"A question regarding the Chameleon Cloud testbed: {query}"
-        retrieved_docs = retriever.invoke(instructional_query)
-        context = "\n\n".join(doc.page_content for doc in retrieved_docs)
-        response = chain.invoke({"question": query, "context": context})
+        sources, context = build_context(query, retriever, parents)
+        response = chain.invoke({"question": query, "context": context, "history": []})
         print(response.content)
-        for i, doc in enumerate(retrieved_docs):
-            print(f"\n================== Match {i+1} ===================")
-            print(doc.page_content)
-            print(f"Metadata: {doc.metadata}")
+        print("\nSources:")
+        for src in sources:
+            print(f"  {src}")
 
 
 if __name__ == "__main__":

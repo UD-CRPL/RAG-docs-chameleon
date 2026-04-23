@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from rag import load_vectorstore, load_pages, create_llm_chain, build_context, VECT_STORE_PATH
+from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH
 
 st.set_page_config(
     page_title="Chameleon Docs Assistant",
@@ -188,12 +188,11 @@ if not os.path.exists(VECT_STORE_PATH):
 if 'retriever' not in st.session_state:
     with st.spinner("Loading index..."):
         st.session_state.retriever = load_vectorstore()
+        st.session_state.parents = load_parents()
 
 if 'chain' not in st.session_state:
     st.session_state.chain = create_llm_chain()
 
-if 'pages' not in st.session_state:
-    st.session_state.pages = load_pages()
 
 if 'history' not in st.session_state:
     st.session_state.history = []
@@ -316,7 +315,7 @@ if question:
 
     with st.chat_message("assistant"):
         seen_sources, context = build_context(
-            question, st.session_state.retriever, st.session_state.pages
+            question, st.session_state.retriever, st.session_state.parents
         )
 
         history_messages = []

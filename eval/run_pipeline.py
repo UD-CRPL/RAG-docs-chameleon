@@ -16,14 +16,14 @@ from datetime import datetime
 
 # Run from /app inside the container
 sys.path.insert(0, "/app")
-from rag import load_vectorstore, create_llm_chain, load_pages, build_context, VECT_STORE_PATH
+from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH
 
 GOLDEN_SET_PATH = os.path.join(os.path.dirname(__file__), "golden_set.json")
 RESULTS_DIR     = os.path.join(os.path.dirname(__file__), "results")
 
 
-def run_question(question: str, retriever, chain, pages: dict) -> dict:
-    sources, context = build_context(question, retriever, pages)
+def run_question(question: str, retriever, chain, parents: dict) -> dict:
+    sources, context = build_context(question, retriever, parents)
     response = chain.invoke({"question": question, "context": context, "history": []})
     return {
         "generated_answer": response.content,
@@ -37,8 +37,8 @@ def main():
 
     print("Loading vector store and LLM chain...")
     retriever = load_vectorstore(VECT_STORE_PATH)
+    parents   = load_parents(VECT_STORE_PATH)
     chain     = create_llm_chain()
-    pages     = load_pages(VECT_STORE_PATH)
     print(f"Ready. Running {len(golden)} questions...\n")
 
     results = []
@@ -48,7 +48,7 @@ def main():
         print(f"  [{qid:02d}/{len(golden)}] {question[:70]}...")
         t0 = time.time()
         try:
-            output = run_question(question, retriever, chain, pages)
+            output = run_question(question, retriever, chain, parents)
             status = "ok"
         except Exception as e:
             output = {"generated_answer": "", "retrieved_sources": [], "num_chunks": 0}
