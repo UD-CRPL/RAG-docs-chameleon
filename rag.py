@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 os.environ['USER_AGENT'] = 'myagent'
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
+from langchain_community.document_compressors.flashrank_rerank import FlashrankRerank
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from loader import loader_docs
@@ -78,16 +79,28 @@ def load_vectorstore(save_path=VECT_STORE_PATH, k=20, fetch_k=80, search_type='m
     return vectorstore.as_retriever(search_type=search_type, search_kwargs={'k': k, 'fetch_k': fetch_k})
 
 
-def diversify_sources(chunks, k=6, max_per_type=2):
+_reranker: FlashrankRerank | None = None
+
+
+def get_reranker() -> FlashrankRerank:
+    global _reranker
+    if _reranker is None:
+        _reranker = FlashrankRerank(top_n=20)
+    return _reranker
+
+
+PRIMARY_SOURCE_TYPES = {"readthedocs", "blog"}
+
+
+def diversify_sources(chunks, k=6):
     """
-    Select up to k chunks with unique parent IDs, capping each source_type at
-    max_per_type. Chunks are assumed ordered by MMR score so relevance is
-    preserved while enforcing breadth.
+    Select up to k chunks with unique parent IDs. Primary sources (readthedocs,
+    blog) fill slots first; specialized sources only appear to fill any remaining
+    slots, capped at 1 each so no single specialized source dominates.
     """
     seen_parents = set()
-    type_counts: dict[str, int] = {}
-    selected = []
-    overflow = []
+    primary = []
+    secondary = []
 
     for chunk in chunks:
         parent_id = chunk.metadata.get('parent_id')
@@ -95,18 +108,23 @@ def diversify_sources(chunks, k=6, max_per_type=2):
             continue
         seen_parents.add(parent_id)
         src_type = chunk.metadata.get('source_type', 'other')
-        if type_counts.get(src_type, 0) < max_per_type:
-            selected.append(chunk)
-            type_counts[src_type] = type_counts.get(src_type, 0) + 1
+        if src_type in PRIMARY_SOURCE_TYPES:
+            primary.append(chunk)
         else:
-            overflow.append(chunk)
+            secondary.append(chunk)
 
-    for chunk in overflow:
+    selected = primary[:k]
+
+    secondary_type_seen: set[str] = set()
+    for chunk in secondary:
         if len(selected) >= k:
             break
-        selected.append(chunk)
+        src_type = chunk.metadata.get('source_type', 'other')
+        if src_type not in secondary_type_seen:
+            selected.append(chunk)
+            secondary_type_seen.add(src_type)
 
-    return selected[:k]
+    return selected
 
 
 def build_context(
@@ -114,12 +132,12 @@ def build_context(
     retriever,
     parents: dict,
     k: int = 6,
-    max_per_type: int = 2,
 ) -> tuple[list[str], str]:
     """Retrieve and assemble context for a question."""
     instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
     chunks = retriever.invoke(instructional_query)
-    selected = diversify_sources(chunks, k=k, max_per_type=max_per_type)
+    chunks = get_reranker().compress_documents(chunks, question)
+    selected = diversify_sources(chunks, k=k)
     sources = [c.metadata['source'] for c in selected if c.metadata.get('source')]
     context = "\n\n---\n\n".join(
         parents[c.metadata['parent_id']]['content']
