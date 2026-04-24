@@ -74,73 +74,33 @@ def load_parents(save_path=VECT_STORE_PATH):
         return json.load(f)
 
 
-def load_vectorstore(save_path=VECT_STORE_PATH, k=20, fetch_k=80, search_type='mmr'):
+def load_vectorstore(save_path=VECT_STORE_PATH, k=6, fetch_k=50, search_type='mmr'):
     vectorstore = FAISS.load_local(save_path, get_embeddings_model(), allow_dangerous_deserialization=True)
     return vectorstore.as_retriever(search_type=search_type, search_kwargs={'k': k, 'fetch_k': fetch_k})
-
-
-# Ordered priority: slots assigned greedily in this order up to each cap.
-SOURCE_TYPE_CAPS = {
-    "readthedocs":   3,  # authoritative technical docs — highest priority
-    "gitbook":       2,  # CHI@Edge / Trovi docs — also authoritative
-    "blog":          1,  # tips/changelogs — useful but not authoritative
-    "forum":         1,  # community Q&A
-    "chameleon_org": 1,  # static site pages
-}
-
-
-def diversify_sources(chunks, k=6):
-    """
-    Select up to k chunks with unique parent IDs, respecting per-source-type
-    slot budgets. Types are processed in SOURCE_TYPE_CAPS insertion order
-    (highest priority first); leftover slots go to any remaining unique chunks.
-    """
-    seen_parents = set()
-    by_type: dict[str, list] = {}
-    remainder = []
-
-    for chunk in chunks:
-        parent_id = chunk.metadata.get('parent_id')
-        if not parent_id or parent_id in seen_parents:
-            continue
-        seen_parents.add(parent_id)
-        src_type = chunk.metadata.get('source_type', 'other')
-        if src_type in SOURCE_TYPE_CAPS:
-            by_type.setdefault(src_type, []).append(chunk)
-        else:
-            remainder.append(chunk)
-
-    selected = []
-    for src_type, cap in SOURCE_TYPE_CAPS.items():
-        for chunk in by_type.get(src_type, [])[:cap]:
-            if len(selected) >= k:
-                break
-            selected.append(chunk)
-        if len(selected) >= k:
-            break
-
-    for chunk in remainder:
-        if len(selected) >= k:
-            break
-        selected.append(chunk)
-
-    return selected
 
 
 def build_context(
     question: str,
     retriever,
     parents: dict,
-    k: int = 6,
 ) -> tuple[list[str], str]:
     """Retrieve and assemble context for a question."""
     instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
     chunks = retriever.invoke(instructional_query)
-    selected = diversify_sources(chunks, k=k)
-    sources = [c.metadata['source'] for c in selected if c.metadata.get('source')]
+
+    seen_urls = set()
+    deduped = []
+    for chunk in chunks:
+        url = chunk.metadata.get('source', '')
+        if url and url in seen_urls:
+            continue
+        seen_urls.add(url)
+        deduped.append(chunk)
+
+    sources = [c.metadata['source'] for c in deduped if c.metadata.get('source')]
     context = "\n\n---\n\n".join(
         parents[c.metadata['parent_id']]['content']
-        for c in selected
+        for c in deduped
         if c.metadata.get('parent_id') in parents
     )
     return sources, context

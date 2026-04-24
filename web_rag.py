@@ -1,9 +1,27 @@
+import json
 import os
+import time
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
 from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH
+
+LOG_PATH = os.path.join(os.path.dirname(__file__), "session_log.jsonl")
+
+
+def log_query(question: str, sources: list[str], context: str, answer: str, latency_s: float):
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "question": question,
+        "sources": sources,
+        "context": context,
+        "answer": answer,
+        "latency_s": round(latency_s, 2),
+    }
+    with open(LOG_PATH, "a") as f:
+        f.write(json.dumps(record) + "\n")
 
 FEEDBACK_FORM_URL = "https://forms.gle/YOUR_FORM_ID"
 
@@ -359,6 +377,7 @@ if question:
         st.markdown(question)
 
     with st.chat_message("assistant"):
+        t0 = time.time()
         seen_sources, context = build_context(
             question, st.session_state.retriever, st.session_state.parents
         )
@@ -379,6 +398,8 @@ if question:
 
         if seen_sources:
             render_sources(seen_sources)
+
+    log_query(question, seen_sources, context, response_text, time.time() - t0)
 
     st.session_state.history.append({
         "question": question,
