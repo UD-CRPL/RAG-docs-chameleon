@@ -5,24 +5,22 @@ os.environ['USER_AGENT'] = 'myagent'
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+from langchain_openai import ChatOpenAI
 from loader import loader_docs
 
 load_dotenv()
 
 TEJAS_API_BASE = "https://ai.tejas.tacc.utexas.edu/v1"
 TEJAS_API_KEY = os.environ.get("TEJAS_API_KEY")
-EMBED_MODEL = "E5-Mistral-7B-Instruct"
 VECT_STORE_PATH = "vect_store"
 
 
 def get_embeddings_model():
-    return OpenAIEmbeddings(
-        model=EMBED_MODEL,
-        openai_api_key=TEJAS_API_KEY,
-        openai_api_base=TEJAS_API_BASE,
-        check_embedding_ctx_length=False,
-        chunk_size=16,
+    return HuggingFaceBgeEmbeddings(
+        model_name="BAAI/bge-large-en-v1.5",
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True},
     )
 
 

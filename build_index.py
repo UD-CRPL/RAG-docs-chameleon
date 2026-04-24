@@ -5,8 +5,8 @@ Each documentation source is fetched independently and checkpointed to
 _fetch_cache/<source>.json before anything is embedded. If a source fails,
 the others are still saved and the existing live index is untouched.
 
-The new index is written to a temporary directory and atomically swapped
-into place only after the full build succeeds.
+The new index is written to a temporary directory and moved into place
+only after the full build succeeds.
 
 Usage:
     python build_index.py                  # re-fetch all sources, rebuild index
@@ -105,11 +105,11 @@ if __name__ == "__main__":
     create_vectorstore(all_docs, save_path=TEMP_STORE)
 
     print("\n=== Swap phase ===")
-    old_store = VECT_STORE_PATH + "_old"
-    if os.path.exists(VECT_STORE_PATH):
-        os.rename(VECT_STORE_PATH, old_store)
-    os.rename(TEMP_STORE, VECT_STORE_PATH)
-    if os.path.exists(old_store):
-        shutil.rmtree(old_store)
+    # vect_store is a Docker volume mount point and cannot be renamed.
+    # Move individual files in instead, overwriting the old index.
+    os.makedirs(VECT_STORE_PATH, exist_ok=True)
+    for fname in os.listdir(TEMP_STORE):
+        shutil.move(os.path.join(TEMP_STORE, fname), os.path.join(VECT_STORE_PATH, fname))
+    shutil.rmtree(TEMP_STORE)
 
     print(f"Index live at '{VECT_STORE_PATH}'. Done.")

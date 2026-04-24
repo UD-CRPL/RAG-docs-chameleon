@@ -226,8 +226,8 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-if not os.path.exists(VECT_STORE_PATH):
-    st.error("Vector store not found. Please run `python build_index.py` first to build the index.")
+if not os.path.exists(os.path.join(VECT_STORE_PATH, "index.faiss")):
+    st.error("Vector store not found or incomplete. Please run `python build_index.py` first to build the index.")
     st.stop()
 
 if 'retriever' not in st.session_state:

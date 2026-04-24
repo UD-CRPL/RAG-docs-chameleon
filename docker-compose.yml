@@ -30,6 +30,7 @@ services:
        - "8501:8501"
     volumes:
       - vect_store:/app/vect_store
+      - fetch_cache:/app/_fetch_cache
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.rag.rule=Host(`${HOST}`)"
@@ -39,4 +40,5 @@ services:
 
 volumes:
   vect_store:
+  fetch_cache:
   letsencrypt:
