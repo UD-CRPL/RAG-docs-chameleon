@@ -79,18 +79,25 @@ def load_vectorstore(save_path=VECT_STORE_PATH, k=20, fetch_k=80, search_type='m
     return vectorstore.as_retriever(search_type=search_type, search_kwargs={'k': k, 'fetch_k': fetch_k})
 
 
-PRIMARY_SOURCE_TYPES = {"readthedocs", "blog"}
+# Ordered priority: slots assigned greedily in this order up to each cap.
+SOURCE_TYPE_CAPS = {
+    "readthedocs":   3,  # authoritative technical docs — highest priority
+    "gitbook":       2,  # CHI@Edge / Trovi docs — also authoritative
+    "blog":          1,  # tips/changelogs — useful but not authoritative
+    "forum":         1,  # community Q&A
+    "chameleon_org": 1,  # static site pages
+}
 
 
 def diversify_sources(chunks, k=6):
     """
-    Select up to k chunks with unique parent IDs. Primary sources (readthedocs,
-    blog) fill slots first; specialized sources only appear to fill any remaining
-    slots, capped at 1 each so no single specialized source dominates.
+    Select up to k chunks with unique parent IDs, respecting per-source-type
+    slot budgets. Types are processed in SOURCE_TYPE_CAPS insertion order
+    (highest priority first); leftover slots go to any remaining unique chunks.
     """
     seen_parents = set()
-    primary = []
-    secondary = []
+    by_type: dict[str, list] = {}
+    remainder = []
 
     for chunk in chunks:
         parent_id = chunk.metadata.get('parent_id')
@@ -98,21 +105,24 @@ def diversify_sources(chunks, k=6):
             continue
         seen_parents.add(parent_id)
         src_type = chunk.metadata.get('source_type', 'other')
-        if src_type in PRIMARY_SOURCE_TYPES:
-            primary.append(chunk)
+        if src_type in SOURCE_TYPE_CAPS:
+            by_type.setdefault(src_type, []).append(chunk)
         else:
-            secondary.append(chunk)
+            remainder.append(chunk)
 
-    selected = primary[:k]
-
-    secondary_type_seen: set[str] = set()
-    for chunk in secondary:
+    selected = []
+    for src_type, cap in SOURCE_TYPE_CAPS.items():
+        for chunk in by_type.get(src_type, [])[:cap]:
+            if len(selected) >= k:
+                break
+            selected.append(chunk)
         if len(selected) >= k:
             break
-        src_type = chunk.metadata.get('source_type', 'other')
-        if src_type not in secondary_type_seen:
-            selected.append(chunk)
-            secondary_type_seen.add(src_type)
+
+    for chunk in remainder:
+        if len(selected) >= k:
+            break
+        selected.append(chunk)
 
     return selected
 
