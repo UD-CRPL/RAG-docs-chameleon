@@ -248,9 +248,9 @@ if not os.path.exists(os.path.join(VECT_STORE_PATH, "index.faiss")):
     st.error("Vector store not found or incomplete. Please run `python build_index.py` first to build the index.")
     st.stop()
 
-if 'retriever' not in st.session_state:
+if 'vectorstore' not in st.session_state:
     with st.spinner("Loading index..."):
-        st.session_state.retriever = load_vectorstore()
+        st.session_state.vectorstore = load_vectorstore()
         st.session_state.parents = load_parents()
 
 if 'chain' not in st.session_state:
@@ -378,8 +378,8 @@ if question:
 
     with st.chat_message("assistant"):
         t0 = time.time()
-        seen_sources, context = build_context(
-            question, st.session_state.retriever, st.session_state.parents
+        seen_sources, context, debug_candidates = build_context(
+            question, st.session_state.vectorstore, st.session_state.parents
         )
 
         history_messages = []
@@ -398,6 +398,17 @@ if question:
 
         if seen_sources:
             render_sources(seen_sources)
+
+        with st.expander("Retrieval debug"):
+            st.markdown("**Reranker scores** — all MMR candidates, sorted by relevance. ✅ = sent to model.")
+            for c in debug_candidates:
+                icon = "✅" if c["selected"] else "⬜"
+                st.markdown(f"{icon} `{c['score']:+.4f}` [{c['url']}]({c['url']})")
+                with st.expander("chunk", expanded=False):
+                    st.text(c["chunk"])
+            st.divider()
+            st.markdown("**Full context sent to model:**")
+            st.text_area("context", context, height=300, label_visibility="collapsed")
 
     log_query(question, seen_sources, context, response_text, time.time() - t0)
 

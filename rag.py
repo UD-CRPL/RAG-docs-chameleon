@@ -7,6 +7,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_openai import ChatOpenAI
+from sentence_transformers import CrossEncoder
 from loader import loader_docs
 
 load_dotenv()
@@ -74,36 +75,76 @@ def load_parents(save_path=VECT_STORE_PATH):
         return json.load(f)
 
 
-def load_vectorstore(save_path=VECT_STORE_PATH, k=6, fetch_k=50, search_type='mmr'):
-    vectorstore = FAISS.load_local(save_path, get_embeddings_model(), allow_dangerous_deserialization=True)
-    return vectorstore.as_retriever(search_type=search_type, search_kwargs={'k': k, 'fetch_k': fetch_k})
+_reranker = None
+
+
+def get_reranker():
+    global _reranker
+    if _reranker is None:
+        _reranker = CrossEncoder('BAAI/bge-reranker-base', max_length=512)
+    return _reranker
+
+
+def load_vectorstore(save_path=VECT_STORE_PATH):
+    return FAISS.load_local(save_path, get_embeddings_model(), allow_dangerous_deserialization=True)
 
 
 def build_context(
     question: str,
-    retriever,
+    vectorstore,
     parents: dict,
-) -> tuple[list[str], str]:
-    """Retrieve and assemble context for a question."""
+    k: int = 6,
+    mmr_k: int = 20,
+    fetch_k: int = 50,
+) -> tuple[list[str], str, list[dict]]:
+    """Retrieve and assemble context for a question.
+
+    Returns (sources, context, debug_candidates) where debug_candidates is a list
+    of all reranked chunks with their scores, sorted best-first.
+    """
     instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
-    chunks = retriever.invoke(instructional_query)
+
+    # MMR retrieval: diverse candidate pool for the reranker to choose from
+    candidates = vectorstore.max_marginal_relevance_search(
+        instructional_query, k=mmr_k, fetch_k=fetch_k
+    )
+
+    # Cross-encoder reranking: score each (query, chunk) pair together
+    reranker = get_reranker()
+    pairs = [(instructional_query, c.page_content) for c in candidates]
+    scores = reranker.predict(pairs)
+
+    ranked = sorted(zip(candidates, scores), key=lambda x: x[1], reverse=True)
 
     seen_urls = set()
-    deduped = []
-    for chunk in chunks:
-        url = chunk.metadata.get('source', '')
+    selected = []
+    selected_urls = set()
+    for doc, score in ranked:
+        url = doc.metadata.get('source', '')
         if url and url in seen_urls:
             continue
         seen_urls.add(url)
-        deduped.append(chunk)
+        if len(selected) < k:
+            selected.append(doc)
+            selected_urls.add(url)
 
-    sources = [c.metadata['source'] for c in deduped if c.metadata.get('source')]
+    debug_candidates = [
+        {
+            "url": doc.metadata.get('source', ''),
+            "score": round(float(score), 4),
+            "selected": doc.metadata.get('source', '') in selected_urls,
+            "chunk": doc.page_content,
+        }
+        for doc, score in ranked
+    ]
+
+    sources = [c.metadata['source'] for c in selected if c.metadata.get('source')]
     context = "\n\n---\n\n".join(
         parents[c.metadata['parent_id']]['content']
-        for c in deduped
+        for c in selected
         if c.metadata.get('parent_id') in parents
     )
-    return sources, context
+    return sources, context, debug_candidates
 
 
 def create_llm_chain():
@@ -135,7 +176,7 @@ def main():
         docs = loader_docs()
         create_vectorstore(docs)
 
-    retriever = load_vectorstore()
+    vectorstore = load_vectorstore()
     parents = load_parents()
     chain = create_llm_chain()
 
@@ -144,7 +185,7 @@ def main():
         query = input("\nPlease enter a question: ")
         if query == "exit":
             break
-        sources, context = build_context(query, retriever, parents)
+        sources, context, _ = build_context(query, vectorstore, parents)
         response = chain.invoke({"question": query, "context": context, "history": []})
         print(response.content)
         print("\nSources:")

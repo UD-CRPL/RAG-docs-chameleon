@@ -26,7 +26,7 @@ CHAMELEON_ORG_URLS = [
 BLOG_BASE = "https://blog.chameleoncloud.org"
 # Only index posts from these categories — skip user experiments and announcements
 # which tend to have little practical how-to content
-BLOG_CATEGORIES = {"tips-and-tricks", "chameleon-changelog", "featured"}
+BLOG_CATEGORIES = {"tips-and-tricks"}
 
 # Forum posts (high-value Q&A)
 FORUM_BASE = "https://forum.chameleoncloud.org"
@@ -267,7 +267,12 @@ def clean_docs(url):
 
 def fetch_readthedocs():
     urls = get_readthedocs_urls(READTHEDOCS_BASE) + get_python_chi_urls(PYTHON_CHI_BASE)
-    return [d for url in urls if (d := clean_docs(url))]
+    # Exclude the root landing page — broad overview that superficially matches everything
+    root_index = urljoin(READTHEDOCS_BASE, "index.html")
+    urls = [u for u in urls if u != root_index]
+    docs = [d for url in urls if (d := clean_docs(url))]
+    # Drop pages with very little content (section TOC stubs, empty pages)
+    return [d for d in docs if len(d.page_content) >= 500]
 
 
 def fetch_chameleon_org():
@@ -293,10 +298,7 @@ def fetch_gitbook():
 # Registry used by build_index.py for per-source checkpointing
 SOURCES = {
     "readthedocs": fetch_readthedocs,
-    "chameleon_org": fetch_chameleon_org,
     "blog": fetch_blog,
-    "forum": fetch_forum,
-    "gitbook": fetch_gitbook,
 }
 
 

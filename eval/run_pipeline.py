@@ -23,7 +23,7 @@ RESULTS_DIR     = os.path.join(os.path.dirname(__file__), "results")
 
 
 def run_question(question: str, retriever, chain, parents: dict) -> dict:
-    sources, context = build_context(question, retriever, parents)
+    sources, context, _ = build_context(question, retriever, parents)
     response = chain.invoke({"question": question, "context": context, "history": []})
     return {
         "generated_answer": response.content,
