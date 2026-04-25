@@ -104,10 +104,21 @@ def build_context(
     """
     instructional_query = f"A question regarding the Chameleon Cloud testbed: {question}"
 
-    # MMR retrieval: diverse candidate pool for the reranker to choose from
-    candidates = vectorstore.max_marginal_relevance_search(
-        instructional_query, k=mmr_k, fetch_k=fetch_k
+    # Pull candidates from each source type separately so the reranker sees a
+    # balanced pool — blog chunks outnumber readthedocs chunks after splitting,
+    # so a single shared pool would be blog-dominated before reranking begins.
+    all_scored = vectorstore.similarity_search_with_relevance_scores(
+        instructional_query, k=fetch_k
     )
+    by_type: dict[str, list] = {}
+    for doc, score in all_scored:
+        src = doc.metadata.get('source_type', 'other')
+        by_type.setdefault(src, []).append(doc)
+
+    per_type_k = max(k, mmr_k // max(len(by_type), 1))
+    candidates = []
+    for docs in by_type.values():
+        candidates.extend(docs[:per_type_k])
 
     # Cross-encoder reranking: score each (query, chunk) pair together
     reranker = get_reranker()
@@ -138,12 +149,26 @@ def build_context(
         for doc, score in ranked
     ]
 
+    SOURCE_TYPE_LABELS = {
+        "readthedocs":   "Chameleon Docs",
+        "python_chi":    "Python CHI Docs",
+        "blog":          "Blog",
+        "forum":         "Community Forum",
+        "gitbook":       "CHI@Edge/Trovi Docs",
+        "chameleon_org": "Chameleon Cloud",
+    }
+
     sources = [c.metadata['source'] for c in selected if c.metadata.get('source')]
-    context = "\n\n---\n\n".join(
-        parents[c.metadata['parent_id']]['content']
-        for c in selected
-        if c.metadata.get('parent_id') in parents
-    )
+    context_parts = []
+    for c in selected:
+        parent = parents.get(c.metadata.get('parent_id', ''))
+        if not parent:
+            continue
+        src_type = parent.get('source_type', 'other')
+        label = SOURCE_TYPE_LABELS.get(src_type, src_type.replace('_', ' ').title())
+        url = parent.get('source', '')
+        context_parts.append(f"[{label}: {url}]\n{parent['content']}")
+    context = "\n\n---\n\n".join(context_parts)
     return sources, context, debug_candidates
 
 
@@ -159,6 +184,9 @@ def create_llm_chain():
         ("system", (
             "You are a helpful assistant that answers questions about Chameleon Cloud based on its official documentation. "
             "Use only the provided context to answer. "
+            "Each context passage is labeled with its source type and URL. "
+            "Treat 'Chameleon Docs' and 'Python CHI Docs' as authoritative — when they directly address the question, base your answer on them. "
+            "Blog posts and other sources are supplementary: use them to add examples or context, but do not let them override what the official docs say. "
             "For simple questions, give a concise answer. For complex questions, give a thorough, step-by-step answer. "
             "Do not include URLs or source citations in your answer — relevant documentation links will be shown separately. "
             "If the answer is not in the context, say 'I don't know' and do not make up an answer."
