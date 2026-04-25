@@ -1,0 +1,623 @@
+{
+  "timestamp": "20260425_193213",
+  "threshold": 0.5,
+  "results": [
+    {
+      "id": 1,
+      "category": "Factual Recall",
+      "question": "What is the purpose of the Chameleon Associate Sites?",
+      "answer": "The purpose of the Chameleon Associate Sites is to allow organizations to join a federation of testbed resources specifically designed to meet the Computer Science research use case, by running a cloud \"region\" of Chameleon on their own hardware. This enables them to contribute resources to the community, provide a well-defined and easy-to-implement way to share resources, and reduce the cost of setting up a research testbed from scratch. Associate Sites are federated with the larger Chameleon testbed, have access to centralized resources, and operate independently with their own configuration and policy.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/turn-your-hardware-chameleon-associate-site-chi-box/",
+        "https://blog.chameleoncloud.org/posts/tips-and-tricks-packaging-experiments-reproducibility/",
+        "https://blog.chameleoncloud.org/posts/chi-in-a-box-update/",
+        "https://blog.chameleoncloud.org/posts/all-about-traces/",
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html",
+        "https://blog.chameleoncloud.org/posts/interactive-science-made-easy-with-chameleon-daypass/"
+      ],
+      "retrieval": {
+        "total_candidates": 17,
+        "passed_threshold": 11,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.703,
+            "top_score": 0.998
+          },
+          "readthedocs": {
+            "n": 7,
+            "avg_score": 0.2,
+            "top_score": 0.776
+          }
+        }
+      },
+      "latency_s": 8.27,
+      "status": "ok"
+    },
+    {
+      "id": 2,
+      "category": "Factual Recall",
+      "question": "What specific model of GPU is available on the gpu_rtx_8000 nodes?",
+      "answer": "I don't know. The provided context does not mention the gpu_rtx_8000 nodes or the specific model of GPU available on them.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/composible-hardware-on-chameleon-now/",
+        "https://blog.chameleoncloud.org/posts/all-about-traces/",
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html"
+      ],
+      "retrieval": {
+        "total_candidates": 15,
+        "passed_threshold": 6,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.267,
+            "top_score": 0.699
+          },
+          "readthedocs": {
+            "n": 5,
+            "avg_score": 0.183,
+            "top_score": 0.509
+          }
+        }
+      },
+      "latency_s": 2.73,
+      "status": "ok"
+    },
+    {
+      "id": 3,
+      "category": "How-To",
+      "question": "How do I create an isolated network for my instances using the GUI?",
+      "answer": "To create an isolated network for your instances using the GUI, you can use the Network panel. Here are the steps:\n\n1. Go to the Network panel of the GUI.\n2. Create a dedicated network.\n3. Create a router.\n4. Configure the network and router settings as needed.\n\nNote that you can also use a Heat template to create an isolated network. To do this, you can follow these steps:\n\n1. Go to Project > Orchestration > Stacks.\n2. Click the Launch Stack button.\n3. Select URL as the Template Source and paste the URL of the network-isolation.yaml template.\n4. Provide a name for your stack, enter your password, and set a private IP range.\n5. Set the first and last IP addresses of the DHCP range.\n\nThis will create an isolated network with a dedicated router, allowing you to launch instances with restricted network access.",
+      "sources": [
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_vlan.html",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/index.html",
+        "https://blog.chameleoncloud.org/posts/cloud-wrangling-chameleons-python-library/",
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html"
+      ],
+      "retrieval": {
+        "total_candidates": 20,
+        "passed_threshold": 9,
+        "threshold_used": 0.5,
+        "by_source": {
+          "readthedocs": {
+            "n": 10,
+            "avg_score": 0.663,
+            "top_score": 0.991
+          },
+          "blog": {
+            "n": 10,
+            "avg_score": 0.155,
+            "top_score": 0.838
+          }
+        }
+      },
+      "latency_s": 3.96,
+      "status": "ok"
+    },
+    {
+      "id": 4,
+      "category": "How-To",
+      "question": "How do I find and use a pre-configured Jupyter notebook on Chameleon?",
+      "answer": "To find and use a pre-configured Jupyter notebook on Chameleon, follow these steps:\n\n1. Log in to the Chameleon portal and click on the \"Experiment\" tab.\n2. Select the \"Jupyter Interface\" item, which will launch a new window and begin loading the Jupyter server.\n3. Once the JupyterHub interface is launched, you can create new notebooks, open consoles, and even open a terminal.\n4. To find pre-configured Jupyter notebooks, look for examples in your Jupyter Notebook server, such as those found at \"notebooks/examples/\".\n5. You can also access specific notebooks by navigating to their location, such as \"~/notebooks/tutorials/networking/CloudConnect.ipynb\" or \"notebooks/examples/configuration/UsingSSHToConfigureNameResolution.ipynb\".\n6. Open the desired notebook and run the cells to execute the code and explore the experiment.\n\nSome examples of pre-configured Jupyter notebooks on Chameleon include:\n\n* \"power-experiment/RunExperiment.ipynb\" which measures the impact of CPU utilization on a bare metal node's power usage\n* \"CloudConnect.ipynb\" which demonstrates how to deploy an experiment using Cloud Connect\n* \"UsingSSHToConfigureNameResolution.ipynb\" which shows how to automate deploying a server and several clients in a custom isolated network.",
+      "sources": [
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html",
+        "https://blog.chameleoncloud.org/posts/tips-and-tricks-packaging-experiments-reproducibility/",
+        "https://blog.chameleoncloud.org/posts/reproducible-workflow-jupyter-chameleon/",
+        "https://blog.chameleoncloud.org/posts/chameleon-experiments-using-direct-network-connections-public-clouds-aws/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/jupyter/index.html",
+        "https://blog.chameleoncloud.org/posts/accessing-multiple-nodes-private-network-without-dns-using-jupyter-notebook/"
+      ],
+      "retrieval": {
+        "total_candidates": 17,
+        "passed_threshold": 13,
+        "threshold_used": 0.5,
+        "by_source": {
+          "readthedocs": {
+            "n": 7,
+            "avg_score": 0.485,
+            "top_score": 1.0
+          },
+          "blog": {
+            "n": 10,
+            "avg_score": 0.722,
+            "top_score": 0.981
+          }
+        }
+      },
+      "latency_s": 3.62,
+      "status": "ok"
+    },
+    {
+      "id": 5,
+      "category": "Troubleshooting",
+      "question": "My bare metal node is stuck in the \"deploying\" state for a long time. What should I do?",
+      "answer": "I don't know. The provided context does not address the issue of a bare metal node being stuck in the \"deploying\" state. It provides general information about bare metal instances on Chameleon and the differences between bare metal and virtualized instances, but it does not offer troubleshooting guidance for deployment issues.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/bare-metal-or-kvm-which-should-you-choose-and-when/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/baremetal/index.html"
+      ],
+      "retrieval": {
+        "total_candidates": 14,
+        "passed_threshold": 4,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.246,
+            "top_score": 0.639
+          },
+          "readthedocs": {
+            "n": 4,
+            "avg_score": 0.276,
+            "top_score": 0.572
+          }
+        }
+      },
+      "latency_s": 2.66,
+      "status": "ok"
+    },
+    {
+      "id": 6,
+      "category": "Troubleshooting",
+      "question": "I get an \"Error 403: Forbidden\" when trying to use the OpenStack CLI. What's wrong?",
+      "answer": "I don't know. The provided context does not address the issue of an \"Error 403: Forbidden\" when using the OpenStack CLI. It appears to be a blog post discussing Chameleon Cloud and its configuration using OpenStack, but it does not provide troubleshooting information for this specific error.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/all-about-traces/"
+      ],
+      "retrieval": {
+        "total_candidates": 20,
+        "passed_threshold": 2,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.175,
+            "top_score": 0.783
+          },
+          "readthedocs": {
+            "n": 10,
+            "avg_score": 0.058,
+            "top_score": 0.251
+          }
+        }
+      },
+      "latency_s": 3.54,
+      "status": "ok"
+    },
+    {
+      "id": 7,
+      "category": "Conceptual",
+      "question": "What is \"CHI-in-a-Box\"?",
+      "answer": "CHI-in-a-Box is a packaging of the Chameleon Infrastructure (CHI) that allows others to configure a testbed on their own hardware, either independently or as a Chameleon Associate Site. This packaging enables sites to leverage shared services, a common user base, and user support provided by the Chameleon team, while operating independently and determining their own configuration and policy. CHI-in-a-Box provides industry-standard APIs, best-practices, and automation for running a research testbed, making it easier for sites to set up and operate their own testbeds.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/chi-in-a-box-update/",
+        "https://blog.chameleoncloud.org/posts/turn-your-hardware-chameleon-associate-site-chi-box/",
+        "https://blog.chameleoncloud.org/posts/haswells-are-back-an-interview-with-the-uic-associate-site/"
+      ],
+      "retrieval": {
+        "total_candidates": 14,
+        "passed_threshold": 6,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.446,
+            "top_score": 0.999
+          },
+          "readthedocs": {
+            "n": 4,
+            "avg_score": 0.101,
+            "top_score": 0.361
+          }
+        }
+      },
+      "latency_s": 2.39,
+      "status": "ok"
+    },
+    {
+      "id": 8,
+      "category": "Conceptual",
+      "question": "What does it mean for Chameleon to support \"deep reconfigurability\"?",
+      "answer": "I don't know what \"deep reconfigurability\" means in the context of Chameleon, as it is not mentioned in the provided context.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/using-chameleon-for-artifact-evaluation/",
+        "https://blog.chameleoncloud.org/posts/tips-and-tricks-packaging-experiments-reproducibility/",
+        "https://blog.chameleoncloud.org/posts/chi-in-a-box-update/"
+      ],
+      "retrieval": {
+        "total_candidates": 19,
+        "passed_threshold": 4,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.535,
+            "top_score": 0.942
+          },
+          "readthedocs": {
+            "n": 9,
+            "avg_score": 0.071,
+            "top_score": 0.366
+          }
+        }
+      },
+      "latency_s": 3.07,
+      "status": "ok"
+    },
+    {
+      "id": 9,
+      "category": "Comparative",
+      "question": "What is the difference between a Floating IP and a Private IP?",
+      "answer": "The main difference between a Floating IP and a Private IP is that a Floating IP is a publicly accessible IP address that can be reached directly over the public Internet, whereas a Private IP is not directly accessible from the public Internet.\n\nWhen you assign a Floating IP to an instance, it allows the instance to be accessed from anywhere on the Internet, which also means that any services running on the instance can be exposed to potential security risks. On the other hand, a Private IP is typically used for internal communication within a private network and is not directly accessible from the public Internet.\n\nIn the context of Chameleon Cloud, a Floating IP is assigned to an instance to allow it to be accessed via SSH using a private key, whereas a Private IP is used for internal communication within the instance.",
+      "sources": [
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_basic.html",
+        "https://blog.chameleoncloud.org/posts/make-your-summer-school-success-jupyter-and-chameleon/",
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html"
+      ],
+      "retrieval": {
+        "total_candidates": 20,
+        "passed_threshold": 9,
+        "threshold_used": 0.5,
+        "by_source": {
+          "readthedocs": {
+            "n": 10,
+            "avg_score": 0.331,
+            "top_score": 0.949
+          },
+          "blog": {
+            "n": 10,
+            "avg_score": 0.139,
+            "top_score": 0.946
+          }
+        }
+      },
+      "latency_s": 4.38,
+      "status": "ok"
+    },
+    {
+      "id": 10,
+      "category": "Comparative",
+      "question": "When should I use an FPGA node versus a GPU node?",
+      "answer": "I don't know. There is no context provided to answer the question. Please provide the relevant context from Chameleon Docs or other sources.",
+      "sources": [],
+      "retrieval": {
+        "total_candidates": 13,
+        "passed_threshold": 0,
+        "threshold_used": 0.5,
+        "by_source": {
+          "readthedocs": {
+            "n": 6,
+            "avg_score": 0.136,
+            "top_score": 0.452
+          },
+          "blog": {
+            "n": 7,
+            "avg_score": 0.066,
+            "top_score": 0.168
+          }
+        }
+      },
+      "latency_s": 2.17,
+      "status": "ok"
+    },
+    {
+      "id": 11,
+      "category": "Factual Recall",
+      "question": "How do I cite Chameleon in my research paper?",
+      "answer": "To cite Chameleon in your research paper, you should acknowledge Chameleon in your publications as part of the terms and conditions of use. For information on how to reference Chameleon in your publications and the suggested acknowledgement text, see the FAQ.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/all-about-traces/",
+        "https://chameleoncloud.readthedocs.io/en/latest/user/federation.html",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/sharing/packaging_artifacts.html",
+        "https://blog.chameleoncloud.org/posts/chi-in-a-box-update/",
+        "https://blog.chameleoncloud.org/posts/back-to-school-with-chameleon/"
+      ],
+      "retrieval": {
+        "total_candidates": 14,
+        "passed_threshold": 7,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.27,
+            "top_score": 0.713
+          },
+          "readthedocs": {
+            "n": 4,
+            "avg_score": 0.458,
+            "top_score": 0.701
+          }
+        }
+      },
+      "latency_s": 2.29,
+      "status": "ok"
+    },
+    {
+      "id": 12,
+      "category": "How-To",
+      "question": "How do I attach a volume to my running instance?",
+      "answer": "To attach a volume to your running instance, follow these steps:\n\n1. Navigate to the instance overview via \"Computes > Instances\" on the sidebar.\n2. Find your instance in the list and under the \"Actions\" column, select \"Attach Volume\" or \"Manage Attachments\".\n3. A popup will appear, select your volume from the dropdown.\n4. Confirm by clicking \"Attach Volume\".\n\nAfter attaching the volume, you can verify that it is attached by checking the \"Volumes Attached\" section on the instance overview page. The volume will be mounted as a block device inside your instance, which you can see by running the `lsblk` command via SSH.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/managing-persistent-storage-with-volumes-at-kvmtacc/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/kvm/kvm_volumes.html"
+      ],
+      "retrieval": {
+        "total_candidates": 17,
+        "passed_threshold": 3,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.152,
+            "top_score": 0.982
+          },
+          "readthedocs": {
+            "n": 7,
+            "avg_score": 0.183,
+            "top_score": 0.58
+          }
+        }
+      },
+      "latency_s": 2.8,
+      "status": "ok"
+    },
+    {
+      "id": 13,
+      "category": "Factual Recall",
+      "question": "What is the maximum duration for a single lease reservation?",
+      "answer": "The maximum duration for a single lease reservation is 7 days. However, an active lease can be prolonged by up to 7 days from the moment of request if resources are available, within 48 hours of its end time. In exceptional cases, a one-time exception for a longer lease can be requested by submitting a ticket on the Help Desk.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/how-make-most-your-seven-day-lease/",
+        "https://blog.chameleoncloud.org/posts/bare-metal-or-kvm-which-should-you-choose-and-when/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/reservations/gui_reservations.html"
+      ],
+      "retrieval": {
+        "total_candidates": 20,
+        "passed_threshold": 4,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.308,
+            "top_score": 0.977
+          },
+          "readthedocs": {
+            "n": 10,
+            "avg_score": 0.141,
+            "top_score": 0.969
+          }
+        }
+      },
+      "latency_s": 3.9,
+      "status": "ok"
+    },
+    {
+      "id": 14,
+      "category": "Negative Question",
+      "question": "Can I use my Chameleon allocation to mine cryptocurrency?",
+      "answer": "I don't know. The provided context does not address the question of using a Chameleon allocation to mine cryptocurrency.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/all-about-traces/",
+        "https://blog.chameleoncloud.org/posts/chi-in-a-box-update/",
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html"
+      ],
+      "retrieval": {
+        "total_candidates": 19,
+        "passed_threshold": 7,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.17,
+            "top_score": 0.624
+          },
+          "readthedocs": {
+            "n": 9,
+            "avg_score": 0.069,
+            "top_score": 0.584
+          }
+        }
+      },
+      "latency_s": 2.57,
+      "status": "ok"
+    },
+    {
+      "id": 15,
+      "category": "Complex Query",
+      "question": "How can I set up an experiment that requires a specific kernel version on a bare metal node?",
+      "answer": "To set up an experiment that requires a specific kernel version on a bare metal node, you can follow these steps:\n\n1. Ensure you have a lease and have set up key pairs to connect to the instance.\n2. Use a whole disk image, which contains its own kernel and ramdisk files, rather than a partition image.\n3. Modify the boot loader configuration (e.g., `/boot/grub2/grub.cfg` on CentOS 7 images) to point to a new kernel on the local disk.\n4. Specify kernel parameters and then reboot using this modified configuration.\n5. If needed, configure networking for virtual machines by setting up a KVM Public Bridge and requesting a Neutron port.\n\nNote that most Chameleon base images are whole disk images, which should give you a good starting point for customizing the kernel. Additionally, you can update the hardware query in step 1 of the experiment process to specify requirements for the type of node your experiment runs on.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/packaging-your-experiments-on-chameleon-with-python-chi-10/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/baremetal/index.html",
+        "https://blog.chameleoncloud.org/posts/experiment-patterns-making-complex-experiments-easy/",
+        "https://blog.chameleoncloud.org/posts/bare-metal-or-kvm-which-should-you-choose-and-when/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/baremetal/launching_cli.html"
+      ],
+      "retrieval": {
+        "total_candidates": 13,
+        "passed_threshold": 8,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 7,
+            "avg_score": 0.447,
+            "top_score": 0.889
+          },
+          "readthedocs": {
+            "n": 6,
+            "avg_score": 0.287,
+            "top_score": 0.877
+          }
+        }
+      },
+      "latency_s": 2.94,
+      "status": "ok"
+    },
+    {
+      "id": 16,
+      "category": "Conceptual",
+      "question": "What is the Trovi artifacts repository?",
+      "answer": "The Trovi artifacts repository is a sharing portal that allows users to share and access digital research and education artifacts, such as packaged experiments, workshop tutorials, or class materials, on the Chameleon testbed. It is a flexible, standards-based service that can be adapted for various testbeds and is integrated with the Chameleon platform, enabling users to launch artifacts into a JupyterLab environment. Trovi serves as a repository for storing, sharing, and finding computer science artifacts that run on shared Cyberinfrastructure like Chameleon, and it provides an open API for programmatic access. Users can browse, search, and launch artifacts, as well as create and manage their own artifacts, using the Trovi Dashboard.",
+      "sources": [
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html",
+        "https://blog.chameleoncloud.org/posts/importing-github-repositories-to-trovi-a-step-by-step-guide/",
+        "https://blog.chameleoncloud.org/posts/from-github-to-publication-using-trovi-effectively/",
+        "https://blog.chameleoncloud.org/posts/sharing-experiments-with-trovi/",
+        "https://blog.chameleoncloud.org/posts/the-hitchhikers-guide-to-chameleon-documentation-finding-answers-fast/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/sharing/index.html"
+      ],
+      "retrieval": {
+        "total_candidates": 17,
+        "passed_threshold": 15,
+        "threshold_used": 0.5,
+        "by_source": {
+          "readthedocs": {
+            "n": 7,
+            "avg_score": 0.682,
+            "top_score": 0.999
+          },
+          "blog": {
+            "n": 10,
+            "avg_score": 0.692,
+            "top_score": 0.996
+          }
+        }
+      },
+      "latency_s": 2.81,
+      "status": "ok"
+    },
+    {
+      "id": 17,
+      "category": "How-To",
+      "question": "How do I launch multiple nodes with one command using Heat templates?",
+      "answer": "To launch multiple nodes with one command using Heat templates, you can create a Heat Orchestration Template (HOT) that describes your entire experiment, including the launch of multiple nodes. You can then upload this template to Chameleon's Orchestration service and launch it with one click. The template can include parameters such as the number of nodes to launch, the image to use, and the network configuration. \n\nTo launch the template, go to the Stacks section of the Orchestration service, click the `+Launch Stack` button, and select the template you want to use. You will then be prompted to enter any required parameters, such as the stack name, SSH key, and reservation details. Once you have entered these parameters, you can launch the stack, and Chameleon will automatically launch the nodes and configure them according to your template.\n\nYou can also use the `Client Count` input parameter in your template to generate any number of clients to connect to a server, making your experiment deeply reconfigurable by the user at launch time. Additionally, you can use the Heat template to automate the floating IP association process and view the template's outputs, such as the floating IP associated with the server, by clicking on the `Overview` tab. \n\nIt's also possible to execute the Heat template from the command line, which means it can be done from within Jupyter Notebooks, or from the Web GUI. This allows you to launch multiple nodes with one command, without having to interactively make reservations and allocate resources.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/how-maintain-your-sanity-when-deploying-20-nodes/",
+        "https://blog.chameleoncloud.org/posts/orchestrating-and-deploying-complex-appliances/",
+        "https://blog.chameleoncloud.org/posts/choosing-right-orchestration-chameleon/",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_vlan.html",
+        "https://blog.chameleoncloud.org/posts/experiment-pattern-bastion-host/"
+      ],
+      "retrieval": {
+        "total_candidates": 20,
+        "passed_threshold": 9,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.642,
+            "top_score": 0.996
+          },
+          "readthedocs": {
+            "n": 10,
+            "avg_score": 0.146,
+            "top_score": 0.967
+          }
+        }
+      },
+      "latency_s": 5.52,
+      "status": "ok"
+    },
+    {
+      "id": 18,
+      "category": "Factual Recall",
+      "question": "Where are the main Chameleon hardware sites located?",
+      "answer": "The main Chameleon hardware sites are located at the following places: \n\n1. Texas Advanced Computing Center (TACC) in Austin, TX\n2. University of Chicago (UC) in Chicago, IL\n3. National Center for Atmospheric Research (NCAR) in Boulder, CO",
+      "sources": [
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html",
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/discovery/rest_api.html",
+        "https://blog.chameleoncloud.org/posts/turn-your-hardware-chameleon-associate-site-chi-box/",
+        "https://blog.chameleoncloud.org/posts/chi-in-a-box-update/",
+        "https://blog.chameleoncloud.org/posts/all-about-traces/",
+        "https://blog.chameleoncloud.org/posts/teaching-high-performance-computing-with-chameleon/"
+      ],
+      "retrieval": {
+        "total_candidates": 20,
+        "passed_threshold": 11,
+        "threshold_used": 0.5,
+        "by_source": {
+          "readthedocs": {
+            "n": 10,
+            "avg_score": 0.489,
+            "top_score": 0.998
+          },
+          "blog": {
+            "n": 10,
+            "avg_score": 0.352,
+            "top_score": 0.794
+          }
+        }
+      },
+      "latency_s": 4.42,
+      "status": "ok"
+    },
+    {
+      "id": 19,
+      "category": "Troubleshooting",
+      "question": "Why can't my instance access the internet, even with a floating IP?",
+      "answer": "Your instance may not be able to access the internet even with a floating IP due to the firewall rules configured on the instance. Chameleon-supported Ubuntu and CentOS images come with baked-in firewall rules that severely restrict connections over the public internet. \n\nTo resolve this issue, you can check the firewall rules using the `firewall-cmd` command and add rules to allow outgoing traffic. Alternatively, if you are using a KVM instance, you may need to add a security group to your instance and define rules to allow outgoing traffic.\n\nAdditionally, ensure that you are using the correct IP address for outgoing traffic. If you have assigned a floating IP to your instance, use this IP address for outgoing traffic instead of the internal IP address. \n\nIt's also important to note that some images may have more restrictive firewall rules or network configurations that can prevent outgoing traffic. In such cases, you may need to modify the network configuration or disable the firewall temporarily to allow outgoing traffic. \n\nIf you are still having issues, you can file a Help Desk ticket to get assistance from the Chameleon support team.",
+      "sources": [
+        "https://chameleoncloud.readthedocs.io/en/latest/technical/networks/networks_basic.html",
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html",
+        "https://blog.chameleoncloud.org/posts/using-terraform-with-chameleon/",
+        "https://blog.chameleoncloud.org/posts/make-your-summer-school-success-jupyter-and-chameleon/",
+        "https://blog.chameleoncloud.org/posts/cloud-wrangling-chameleons-python-library/",
+        "https://blog.chameleoncloud.org/posts/chameleon-tickets-of-the-year-2024/"
+      ],
+      "retrieval": {
+        "total_candidates": 20,
+        "passed_threshold": 17,
+        "threshold_used": 0.5,
+        "by_source": {
+          "readthedocs": {
+            "n": 10,
+            "avg_score": 0.598,
+            "top_score": 0.991
+          },
+          "blog": {
+            "n": 10,
+            "avg_score": 0.525,
+            "top_score": 0.891
+          }
+        }
+      },
+      "latency_s": 5.19,
+      "status": "ok"
+    },
+    {
+      "id": 20,
+      "category": "Complex Query",
+      "question": "How can I repeat a networking experiment I found on the Chameleon blog to ensure reproducibility?",
+      "answer": "To repeat a networking experiment found on the Chameleon blog and ensure reproducibility, follow these steps:\n\n1. **Create your experimental environment**: Use Chameleon to create an environment that matches the one used in the experiment. This can be done using any orchestration method, such as Jupyter Notebooks or Heat templates.\n2. **Configure the network**: Identify the network configuration used in the experiment, such as the use of 'sharednet1' or 'sharedwan1', and replicate it in your environment.\n3. **Deploy the experiment**: Use the same deployment method as the original experiment, such as launching instances or creating a virtual cluster.\n4. **Use Jupyter Notebooks**: Consider using Jupyter Notebooks to orchestrate your experiment, as they provide a reproducible and easily documentable way to conduct experiments.\n5. **Follow tutorials and guides**: Utilize the tutorials and guides provided by Chameleon, such as the Jupyter Notebook tutorial for DirectStitch, to help you deploy and manage your experiment.\n6. **Document your experiment**: Keep a record of your experiment, including the configuration, deployment, and results, to ensure that it can be easily repeated and reproduced.\n\nBy following these steps, you can repeat a networking experiment found on the Chameleon blog and ensure reproducibility. If you need more specific guidance, consider reaching out to the Chameleon team or exploring their documentation and tutorials.",
+      "sources": [
+        "https://blog.chameleoncloud.org/posts/tips-and-tricks-packaging-experiments-reproducibility/",
+        "https://blog.chameleoncloud.org/posts/chameleon-experiments-using-direct-network-connections-public-clouds-aws/",
+        "https://blog.chameleoncloud.org/posts/interactive-and-repeatable-experiments-chameleon-jupyter-notebook/",
+        "https://chameleoncloud.readthedocs.io/en/latest/getting-started/index.html",
+        "https://blog.chameleoncloud.org/posts/chameleon-on-youtube-top-chameleon-videos-to-learn-and-explore/",
+        "https://blog.chameleoncloud.org/posts/isolating-wide-area-networking-and-distributed-computing-experiments/"
+      ],
+      "retrieval": {
+        "total_candidates": 13,
+        "passed_threshold": 10,
+        "threshold_used": 0.5,
+        "by_source": {
+          "blog": {
+            "n": 10,
+            "avg_score": 0.499,
+            "top_score": 0.994
+          },
+          "readthedocs": {
+            "n": 3,
+            "avg_score": 0.339,
+            "top_score": 0.671
+          }
+        }
+      },
+      "latency_s": 3.1,
+      "status": "ok"
+    }
+  ]
+}

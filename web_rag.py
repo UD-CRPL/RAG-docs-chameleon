@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH
+from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH, MIN_RERANKER_SCORE
 
 LOG_PATH = os.path.join(os.path.dirname(__file__), "session_log.jsonl")
 
@@ -400,14 +400,45 @@ if question:
             render_sources(seen_sources)
 
         with st.expander("Retrieval debug"):
-            st.markdown("**Reranker scores** — all MMR candidates, sorted by relevance. ✅ = sent to model.")
+            n_total    = len(debug_candidates)
+            n_above    = sum(1 for c in debug_candidates if c["above_threshold"])
+            n_selected = sum(1 for c in debug_candidates if c["selected"])
+
+            # ── Reranker score summary by source type ──────────────────────
+            src_stats: dict[str, list] = {}
             for c in debug_candidates:
-                icon = "✅" if c["selected"] else "⬜"
-                st.markdown(f"{icon} `{c['score']:+.4f}` [{c['url']}]({c['url']})")
-                with st.expander("chunk", expanded=False):
-                    st.text(c["chunk"])
+                src = "Chameleon Docs" if ("readthedocs" in c["url"] or "python-chi" in c["url"]) else "Blog"
+                src_stats.setdefault(src, []).append(c["score"])
+
+            st.markdown("**Reranker scores by source**")
+            for src, scores in sorted(src_stats.items()):
+                avg = sum(scores) / len(scores)
+                st.markdown(f"- **{src}**: n={len(scores)}  avg={avg:.3f}  top={max(scores):.3f}")
+
             st.divider()
-            st.markdown("**Full context sent to model:**")
+
+            # ── Candidate list ──────────────────────────────────────────────
+            st.markdown(
+                f"**{n_total} unique candidates → {n_above} above threshold → {n_selected} sent to model** "
+                f"(threshold `{MIN_RERANKER_SCORE}`)"
+            )
+            st.caption("✅ sent to model · ⬜ above threshold, not selected · ❌ below threshold")
+            for c in debug_candidates:
+                if c["selected"]:
+                    icon = "✅"
+                elif c["above_threshold"]:
+                    icon = "⬜"
+                else:
+                    icon = "❌"
+                slug = c["url"].rstrip("/").split("/")[-1].replace(".html", "").replace("-", " ")
+                with st.expander(f"{icon} `{c['score']:+.3f}` — {slug}", expanded=False):
+                    st.caption(c["url"])
+                    st.text(c["chunk"])
+
+            st.divider()
+
+            # ── Context sent to model ───────────────────────────────────────
+            st.markdown("**Context sent to model:**")
             st.text_area("context", context, height=300, label_visibility="collapsed")
 
     log_query(question, seen_sources, context, response_text, time.time() - t0)

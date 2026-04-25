@@ -75,6 +75,8 @@ def load_parents(save_path=VECT_STORE_PATH):
         return json.load(f)
 
 
+MIN_RERANKER_SCORE = 0.5
+
 _reranker = None
 
 
@@ -131,6 +133,8 @@ def build_context(
     selected = []
     selected_urls = set()
     for doc, score in ranked:
+        if score < MIN_RERANKER_SCORE:
+            break
         url = doc.metadata.get('source', '')
         if url and url in seen_urls:
             continue
@@ -139,15 +143,24 @@ def build_context(
             selected.append(doc)
             selected_urls.add(url)
 
-    debug_candidates = [
-        {
-            "url": doc.metadata.get('source', ''),
-            "score": round(float(score), 4),
-            "selected": doc.metadata.get('source', '') in selected_urls,
-            "chunk": doc.page_content,
-        }
-        for doc, score in ranked
-    ]
+    # One entry per unique URL — keep the highest-scoring chunk for each URL.
+    # ranked is already sorted descending so the first occurrence wins.
+    _seen_debug_urls: set[str] = set()
+    debug_candidates = []
+    for doc, score in ranked:
+        url = doc.metadata.get('source', '')
+        if url in _seen_debug_urls:
+            continue
+        _seen_debug_urls.add(url)
+        src = doc.metadata.get('source_type', 'other')
+        debug_candidates.append({
+            "url":      url,
+            "score":    round(float(score), 4),
+            "selected": url in selected_urls,
+            "above_threshold": score >= MIN_RERANKER_SCORE,
+            "source_type": src,
+            "chunk":    doc.page_content,
+        })
 
     SOURCE_TYPE_LABELS = {
         "readthedocs":   "Chameleon Docs",
