@@ -1,0 +1,888 @@
+{
+  "timestamp": "20260425_204440",
+  "threshold": 0.5,
+  "configs": [
+    {
+      "name": "baseline",
+      "description": "Current config: per-type balancing (top 10/type), fetch_k=50, query prefix",
+      "fetch_k": 50,
+      "balance": true,
+      "per_type_k": 10,
+      "prefix": true
+    },
+    {
+      "name": "A_no_balance",
+      "description": "No balancing, fetch_k=50, query prefix",
+      "fetch_k": 50,
+      "balance": false,
+      "per_type_k": null,
+      "prefix": true
+    },
+    {
+      "name": "B_fetch100",
+      "description": "No balancing, fetch_k=100, query prefix",
+      "fetch_k": 100,
+      "balance": false,
+      "per_type_k": null,
+      "prefix": true
+    },
+    {
+      "name": "C_fetch200",
+      "description": "No balancing, fetch_k=200, query prefix",
+      "fetch_k": 200,
+      "balance": false,
+      "per_type_k": null,
+      "prefix": true
+    },
+    {
+      "name": "D_no_prefix",
+      "description": "No balancing, fetch_k=50, NO query prefix",
+      "fetch_k": 50,
+      "balance": false,
+      "per_type_k": null,
+      "prefix": false
+    }
+  ],
+  "results": [
+    {
+      "id": 1,
+      "category": "Factual Recall",
+      "question": "What is the purpose of the Chameleon Associate Sites?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9979,
+          "pool_mean": 0.4961,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 2.34
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9979,
+          "pool_mean": 0.3871,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 5.22
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9979,
+          "pool_mean": 0.303,
+          "selected_count": 6,
+          "docs_fraction": 0.0,
+          "latency_s": 11.22
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9979,
+          "pool_mean": 0.204,
+          "selected_count": 6,
+          "docs_fraction": 0.0,
+          "latency_s": 23.55
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9961,
+          "pool_mean": 0.2622,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 4.02
+        }
+      }
+    },
+    {
+      "id": 2,
+      "category": "Factual Recall",
+      "question": "What specific model of GPU is available on the gpu_rtx_8000 nodes?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.699,
+          "pool_mean": 0.2386,
+          "selected_count": 3,
+          "docs_fraction": 0.333,
+          "latency_s": 2.26
+        },
+        "A_no_balance": {
+          "pool_top1": 0.7553,
+          "pool_mean": 0.1504,
+          "selected_count": 4,
+          "docs_fraction": 0.25,
+          "latency_s": 6.84
+        },
+        "B_fetch100": {
+          "pool_top1": 0.7834,
+          "pool_mean": 0.0974,
+          "selected_count": 5,
+          "docs_fraction": 0.2,
+          "latency_s": 13.47
+        },
+        "C_fetch200": {
+          "pool_top1": 0.8112,
+          "pool_mean": 0.0622,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 27.25
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.666,
+          "pool_mean": 0.0548,
+          "selected_count": 1,
+          "docs_fraction": 1.0,
+          "latency_s": 8.02
+        }
+      }
+    },
+    {
+      "id": 3,
+      "category": "How-To",
+      "question": "How do I create an isolated network for my instances using the GUI?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9913,
+          "pool_mean": 0.4089,
+          "selected_count": 4,
+          "docs_fraction": 0.75,
+          "latency_s": 2.47
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9913,
+          "pool_mean": 0.2344,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 6.52
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9913,
+          "pool_mean": 0.1777,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 13.35
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9913,
+          "pool_mean": 0.1166,
+          "selected_count": 6,
+          "docs_fraction": 0.667,
+          "latency_s": 26.71
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9979,
+          "pool_mean": 0.2706,
+          "selected_count": 4,
+          "docs_fraction": 0.75,
+          "latency_s": 8.48
+        }
+      }
+    },
+    {
+      "id": 4,
+      "category": "How-To",
+      "question": "How do I find and use a pre-configured Jupyter notebook on Chameleon?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9995,
+          "pool_mean": 0.624,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 2.3
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9995,
+          "pool_mean": 0.5302,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 6.09
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9995,
+          "pool_mean": 0.4698,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 12.11
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9995,
+          "pool_mean": 0.3445,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 22.83
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9995,
+          "pool_mean": 0.3921,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 5.68
+        }
+      }
+    },
+    {
+      "id": 5,
+      "category": "Troubleshooting",
+      "question": "My bare metal node is stuck in the \"deploying\" state for a long time. What should I do?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.6391,
+          "pool_mean": 0.2545,
+          "selected_count": 2,
+          "docs_fraction": 0.5,
+          "latency_s": 2.06
+        },
+        "A_no_balance": {
+          "pool_top1": 0.6391,
+          "pool_mean": 0.1094,
+          "selected_count": 2,
+          "docs_fraction": 0.5,
+          "latency_s": 7.2
+        },
+        "B_fetch100": {
+          "pool_top1": 0.6391,
+          "pool_mean": 0.0828,
+          "selected_count": 2,
+          "docs_fraction": 0.5,
+          "latency_s": 15.27
+        },
+        "C_fetch200": {
+          "pool_top1": 0.7304,
+          "pool_mean": 0.0696,
+          "selected_count": 4,
+          "docs_fraction": 0.5,
+          "latency_s": 28.79
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.2273,
+          "pool_mean": 0.0331,
+          "selected_count": 0,
+          "docs_fraction": 0.0,
+          "latency_s": 7.08
+        }
+      }
+    },
+    {
+      "id": 6,
+      "category": "Troubleshooting",
+      "question": "I get an \"Error 403: Forbidden\" when trying to use the OpenStack CLI. What's wrong?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.7834,
+          "pool_mean": 0.1163,
+          "selected_count": 1,
+          "docs_fraction": 0.0,
+          "latency_s": 3.05
+        },
+        "A_no_balance": {
+          "pool_top1": 0.7834,
+          "pool_mean": 0.09,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 7.53
+        },
+        "B_fetch100": {
+          "pool_top1": 0.7834,
+          "pool_mean": 0.0656,
+          "selected_count": 5,
+          "docs_fraction": 0.4,
+          "latency_s": 16.14
+        },
+        "C_fetch200": {
+          "pool_top1": 0.7834,
+          "pool_mean": 0.0447,
+          "selected_count": 5,
+          "docs_fraction": 0.4,
+          "latency_s": 32.22
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.282,
+          "pool_mean": 0.0249,
+          "selected_count": 0,
+          "docs_fraction": 0.0,
+          "latency_s": 7.42
+        }
+      }
+    },
+    {
+      "id": 7,
+      "category": "Conceptual",
+      "question": "What is \"CHI-in-a-Box\"?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9994,
+          "pool_mean": 0.3809,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 2.17
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9994,
+          "pool_mean": 0.425,
+          "selected_count": 6,
+          "docs_fraction": 0.0,
+          "latency_s": 5.48
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9994,
+          "pool_mean": 0.2722,
+          "selected_count": 6,
+          "docs_fraction": 0.0,
+          "latency_s": 12.55
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9994,
+          "pool_mean": 0.1574,
+          "selected_count": 6,
+          "docs_fraction": 0.0,
+          "latency_s": 24.39
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9995,
+          "pool_mean": 0.4606,
+          "selected_count": 4,
+          "docs_fraction": 0.0,
+          "latency_s": 5.03
+        }
+      }
+    },
+    {
+      "id": 8,
+      "category": "Conceptual",
+      "question": "What does it mean for Chameleon to support \"deep reconfigurability\"?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9419,
+          "pool_mean": 0.3154,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 2.21
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9419,
+          "pool_mean": 0.143,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 5.64
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9419,
+          "pool_mean": 0.0836,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 10.58
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9419,
+          "pool_mean": 0.0502,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 21.67
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9273,
+          "pool_mean": 0.0258,
+          "selected_count": 1,
+          "docs_fraction": 0.0,
+          "latency_s": 4.88
+        }
+      }
+    },
+    {
+      "id": 9,
+      "category": "Comparative",
+      "question": "What is the difference between a Floating IP and a Private IP?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9486,
+          "pool_mean": 0.2351,
+          "selected_count": 3,
+          "docs_fraction": 0.667,
+          "latency_s": 3.11
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9486,
+          "pool_mean": 0.1855,
+          "selected_count": 4,
+          "docs_fraction": 0.5,
+          "latency_s": 7.66
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9687,
+          "pool_mean": 0.1502,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 14.44
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9687,
+          "pool_mean": 0.1015,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 27.9
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9965,
+          "pool_mean": 0.273,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 6.37
+        }
+      }
+    },
+    {
+      "id": 10,
+      "category": "Comparative",
+      "question": "When should I use an FPGA node versus a GPU node?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.4522,
+          "pool_mean": 0.0866,
+          "selected_count": 0,
+          "docs_fraction": 0.0,
+          "latency_s": 2.26
+        },
+        "A_no_balance": {
+          "pool_top1": 0.4522,
+          "pool_mean": 0.0575,
+          "selected_count": 0,
+          "docs_fraction": 0.0,
+          "latency_s": 6.17
+        },
+        "B_fetch100": {
+          "pool_top1": 0.4522,
+          "pool_mean": 0.0409,
+          "selected_count": 0,
+          "docs_fraction": 0.0,
+          "latency_s": 12.43
+        },
+        "C_fetch200": {
+          "pool_top1": 0.6873,
+          "pool_mean": 0.0322,
+          "selected_count": 2,
+          "docs_fraction": 0.0,
+          "latency_s": 24.37
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.7009,
+          "pool_mean": 0.031,
+          "selected_count": 1,
+          "docs_fraction": 0.0,
+          "latency_s": 6.44
+        }
+      }
+    },
+    {
+      "id": 11,
+      "category": "Factual Recall",
+      "question": "How do I cite Chameleon in my research paper?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.713,
+          "pool_mean": 0.3238,
+          "selected_count": 5,
+          "docs_fraction": 0.4,
+          "latency_s": 1.72
+        },
+        "A_no_balance": {
+          "pool_top1": 0.859,
+          "pool_mean": 0.179,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 5.92
+        },
+        "B_fetch100": {
+          "pool_top1": 0.899,
+          "pool_mean": 0.1394,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 11.21
+        },
+        "C_fetch200": {
+          "pool_top1": 0.899,
+          "pool_mean": 0.1047,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 25.07
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.7577,
+          "pool_mean": 0.0499,
+          "selected_count": 1,
+          "docs_fraction": 1.0,
+          "latency_s": 4.42
+        }
+      }
+    },
+    {
+      "id": 12,
+      "category": "How-To",
+      "question": "How do I attach a volume to my running instance?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9823,
+          "pool_mean": 0.1649,
+          "selected_count": 2,
+          "docs_fraction": 0.5,
+          "latency_s": 1.92
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9823,
+          "pool_mean": 0.0791,
+          "selected_count": 2,
+          "docs_fraction": 0.5,
+          "latency_s": 6.4
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9893,
+          "pool_mean": 0.0819,
+          "selected_count": 4,
+          "docs_fraction": 0.5,
+          "latency_s": 13.67
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9893,
+          "pool_mean": 0.0605,
+          "selected_count": 5,
+          "docs_fraction": 0.4,
+          "latency_s": 24.13
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9998,
+          "pool_mean": 0.1974,
+          "selected_count": 4,
+          "docs_fraction": 0.75,
+          "latency_s": 5.99
+        }
+      }
+    },
+    {
+      "id": 13,
+      "category": "Factual Recall",
+      "question": "What is the maximum duration for a single lease reservation?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9772,
+          "pool_mean": 0.2247,
+          "selected_count": 3,
+          "docs_fraction": 0.333,
+          "latency_s": 3.2
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9772,
+          "pool_mean": 0.1255,
+          "selected_count": 5,
+          "docs_fraction": 0.2,
+          "latency_s": 7.02
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9772,
+          "pool_mean": 0.08,
+          "selected_count": 5,
+          "docs_fraction": 0.2,
+          "latency_s": 14.29
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9772,
+          "pool_mean": 0.0473,
+          "selected_count": 5,
+          "docs_fraction": 0.2,
+          "latency_s": 26.61
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9241,
+          "pool_mean": 0.0755,
+          "selected_count": 3,
+          "docs_fraction": 0.667,
+          "latency_s": 6.56
+        }
+      }
+    },
+    {
+      "id": 14,
+      "category": "Negative Question",
+      "question": "Can I use my Chameleon allocation to mine cryptocurrency?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.6242,
+          "pool_mean": 0.1225,
+          "selected_count": 3,
+          "docs_fraction": 0.333,
+          "latency_s": 1.96
+        },
+        "A_no_balance": {
+          "pool_top1": 0.7754,
+          "pool_mean": 0.0892,
+          "selected_count": 4,
+          "docs_fraction": 0.25,
+          "latency_s": 6.0
+        },
+        "B_fetch100": {
+          "pool_top1": 0.7754,
+          "pool_mean": 0.055,
+          "selected_count": 4,
+          "docs_fraction": 0.25,
+          "latency_s": 10.91
+        },
+        "C_fetch200": {
+          "pool_top1": 0.7754,
+          "pool_mean": 0.0365,
+          "selected_count": 5,
+          "docs_fraction": 0.4,
+          "latency_s": 21.27
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.0311,
+          "pool_mean": 0.0037,
+          "selected_count": 0,
+          "docs_fraction": 0.0,
+          "latency_s": 5.54
+        }
+      }
+    },
+    {
+      "id": 15,
+      "category": "Complex Query",
+      "question": "How can I set up an experiment that requires a specific kernel version on a bare metal node?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.8889,
+          "pool_mean": 0.2778,
+          "selected_count": 5,
+          "docs_fraction": 0.6,
+          "latency_s": 3.3
+        },
+        "A_no_balance": {
+          "pool_top1": 0.8889,
+          "pool_mean": 0.1919,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 6.77
+        },
+        "B_fetch100": {
+          "pool_top1": 0.8889,
+          "pool_mean": 0.1349,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 13.24
+        },
+        "C_fetch200": {
+          "pool_top1": 0.8889,
+          "pool_mean": 0.0828,
+          "selected_count": 6,
+          "docs_fraction": 0.667,
+          "latency_s": 25.37
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.965,
+          "pool_mean": 0.078,
+          "selected_count": 2,
+          "docs_fraction": 0.5,
+          "latency_s": 7.47
+        }
+      }
+    },
+    {
+      "id": 16,
+      "category": "Conceptual",
+      "question": "What is the Trovi artifacts repository?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9991,
+          "pool_mean": 0.6878,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 1.91
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9991,
+          "pool_mean": 0.4267,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 5.32
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9991,
+          "pool_mean": 0.2858,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 11.28
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9991,
+          "pool_mean": 0.1903,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 22.5
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9979,
+          "pool_mean": 0.4449,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 5.44
+        }
+      }
+    },
+    {
+      "id": 17,
+      "category": "How-To",
+      "question": "How do I launch multiple nodes with one command using Heat templates?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9956,
+          "pool_mean": 0.3939,
+          "selected_count": 5,
+          "docs_fraction": 0.2,
+          "latency_s": 3.11
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9956,
+          "pool_mean": 0.2105,
+          "selected_count": 5,
+          "docs_fraction": 0.2,
+          "latency_s": 6.41
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9956,
+          "pool_mean": 0.1285,
+          "selected_count": 5,
+          "docs_fraction": 0.2,
+          "latency_s": 13.54
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9956,
+          "pool_mean": 0.0893,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 27.22
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9829,
+          "pool_mean": 0.1726,
+          "selected_count": 5,
+          "docs_fraction": 0.4,
+          "latency_s": 6.67
+        }
+      }
+    },
+    {
+      "id": 18,
+      "category": "Factual Recall",
+      "question": "Where are the main Chameleon hardware sites located?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9982,
+          "pool_mean": 0.4207,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 3.24
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9982,
+          "pool_mean": 0.2586,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 6.67
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9982,
+          "pool_mean": 0.2071,
+          "selected_count": 6,
+          "docs_fraction": 0.667,
+          "latency_s": 12.61
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9982,
+          "pool_mean": 0.1414,
+          "selected_count": 6,
+          "docs_fraction": 0.667,
+          "latency_s": 25.24
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9995,
+          "pool_mean": 0.1397,
+          "selected_count": 3,
+          "docs_fraction": 1.0,
+          "latency_s": 5.96
+        }
+      }
+    },
+    {
+      "id": 19,
+      "category": "Troubleshooting",
+      "question": "Why can't my instance access the internet, even with a floating IP?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9914,
+          "pool_mean": 0.5613,
+          "selected_count": 6,
+          "docs_fraction": 0.333,
+          "latency_s": 3.48
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9914,
+          "pool_mean": 0.3764,
+          "selected_count": 6,
+          "docs_fraction": 0.5,
+          "latency_s": 7.73
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9914,
+          "pool_mean": 0.3081,
+          "selected_count": 6,
+          "docs_fraction": 0.667,
+          "latency_s": 14.78
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9914,
+          "pool_mean": 0.2352,
+          "selected_count": 6,
+          "docs_fraction": 0.667,
+          "latency_s": 29.06
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9888,
+          "pool_mean": 0.493,
+          "selected_count": 6,
+          "docs_fraction": 0.667,
+          "latency_s": 7.39
+        }
+      }
+    },
+    {
+      "id": 20,
+      "category": "Complex Query",
+      "question": "How can I repeat a networking experiment I found on the Chameleon blog to ensure reproducibility?",
+      "configs": {
+        "baseline": {
+          "pool_top1": 0.9942,
+          "pool_mean": 0.4618,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 1.65
+        },
+        "A_no_balance": {
+          "pool_top1": 0.9942,
+          "pool_mean": 0.3387,
+          "selected_count": 6,
+          "docs_fraction": 0.167,
+          "latency_s": 5.52
+        },
+        "B_fetch100": {
+          "pool_top1": 0.9942,
+          "pool_mean": 0.2962,
+          "selected_count": 6,
+          "docs_fraction": 0.0,
+          "latency_s": 10.95
+        },
+        "C_fetch200": {
+          "pool_top1": 0.9942,
+          "pool_mean": 0.2046,
+          "selected_count": 6,
+          "docs_fraction": 0.0,
+          "latency_s": 22.29
+        },
+        "D_no_prefix": {
+          "pool_top1": 0.9279,
+          "pool_mean": 0.1262,
+          "selected_count": 3,
+          "docs_fraction": 0.0,
+          "latency_s": 4.72
+        }
+      }
+    }
+  ]
+}

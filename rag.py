@@ -170,18 +170,41 @@ def build_context(
         "gitbook":       "CHI@Edge/Trovi Docs",
         "chameleon_org": "Chameleon Cloud",
     }
+    PRIMARY_TYPES = {"readthedocs", "python_chi"}
 
     sources = [c.metadata['source'] for c in selected if c.metadata.get('source')]
-    context_parts = []
+
+    # Split selected chunks into primary (official docs) and supplementary (blog etc.)
+    # selected is already ordered by reranker score descending, so score order is preserved.
+    primary_parts = []
+    supp_parts    = []
     for c in selected:
         parent = parents.get(c.metadata.get('parent_id', ''))
         if not parent:
             continue
         src_type = parent.get('source_type', 'other')
-        label = SOURCE_TYPE_LABELS.get(src_type, src_type.replace('_', ' ').title())
-        url = parent.get('source', '')
-        context_parts.append(f"[{label}: {url}]\n{parent['content']}")
-    context = "\n\n---\n\n".join(context_parts)
+        label    = SOURCE_TYPE_LABELS.get(src_type, src_type.replace('_', ' ').title())
+        url      = parent.get('source', '')
+        passage  = f"[{label}: {url}]\n{parent['content']}"
+        if src_type in PRIMARY_TYPES:
+            primary_parts.append(passage)
+        else:
+            supp_parts.append(passage)
+
+    sections = []
+    if primary_parts:
+        n = len(primary_parts)
+        sections.append(
+            f"=== PRIMARY DOCUMENTATION ({n} passage{'s' if n > 1 else ''}) ===\n\n"
+            + "\n\n---\n\n".join(primary_parts)
+        )
+    if supp_parts:
+        n = len(supp_parts)
+        sections.append(
+            f"=== SUPPLEMENTARY CONTEXT ({n} passage{'s' if n > 1 else ''}) ===\n\n"
+            + "\n\n---\n\n".join(supp_parts)
+        )
+    context = "\n\n".join(sections)
     return sources, context, debug_candidates
 
 
@@ -197,9 +220,12 @@ def create_llm_chain():
         ("system", (
             "You are a helpful assistant that answers questions about Chameleon Cloud based on its official documentation. "
             "Use only the provided context to answer. "
-            "Each context passage is labeled with its source type and URL. "
-            "Treat 'Chameleon Docs' and 'Python CHI Docs' as authoritative — when they directly address the question, base your answer on them. "
-            "Blog posts and other sources are supplementary: use them to add examples or context, but do not let them override what the official docs say. "
+            "The context is divided into two sections:\n"
+            "- PRIMARY DOCUMENTATION: official Chameleon Docs and Python CHI Docs — treat these as authoritative. "
+            "Ground your answer here first.\n"
+            "- SUPPLEMENTARY CONTEXT: blog posts — use these only to add practical examples or fill specific gaps "
+            "not covered by the primary documentation. Do not let them override the official docs.\n"
+            "If the primary section is absent or thin, you may rely on supplementary context but be appropriately cautious. "
             "For simple questions, give a concise answer. For complex questions, give a thorough, step-by-step answer. "
             "Do not include URLs or source citations in your answer — relevant documentation links will be shown separately. "
             "If the answer is not in the context, say 'I don't know' and do not make up an answer."

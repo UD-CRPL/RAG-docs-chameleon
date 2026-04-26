@@ -2,49 +2,50 @@
 
 ## Completed
 
-- **Parent document retrieval** — two-level chunking (400-char child chunks for FAISS, 2000-char parent chunks for context). Replaced earlier approach of returning entire pages as context.
-- **Source diversity filter** — MMR retrieval + deduplication by parent ID. Primary sources (readthedocs, blog) fill context slots first; specialized sources (forum, gitbook, etc.) only included if slots remain, capped at one chunk per type. Replaced earlier flat `max_per_type` cap.
-- **Contextual chunk headers** — each child chunk is prefixed with `[source_type: page title]` at index time so the embedding captures document-level context. Page titles extracted from `<h1>` tags (HTML), first `# heading` (Markdown), and topic title (forum). Requires reindex.
-- **Robust indexing pipeline** — two-phase fetch→embed with per-source JSON checkpointing in `_fetch_cache/`. A source failure no longer aborts the run; prior cache is used as fallback. New index built to a temp directory and atomically swapped into place. `--use-cache` and `--refresh <source>` flags added.
-- **Blog fetch retry** — exponential backoff on blog listing page requests to fix intermittent timeouts that were silently dropping all blog posts.
-- **Evaluation pipeline** — golden set of 20 questions, semantic similarity scoring via E5-Mistral embeddings, CSV comparison across runs.
+- **Parent-child chunking** — 400-char child chunks for FAISS retrieval; 2000-char parent chunks assembled as model context. Retrieves on small chunks for precision, returns coherent context to the model.
+- **Contextual chunk headers** — each child chunk prefixed with `[source_type: page title]` at index time so embeddings capture document-level context.
+- **Robust indexing pipeline** — two-phase fetch→embed with per-source JSON checkpointing; atomic temp-dir swap; `--use-cache` and `--refresh <source>` flags.
+- **Cross-encoder reranker** — replaced MMR-only retrieval with `BAAI/bge-reranker-base`. Fetches a per-type balanced candidate pool, reranks all candidates by (query, chunk) relevance, applies a 0.5 score threshold to cut weak matches.
+- **Reranker score threshold** — chunks scoring below 0.5 are excluded from context. Model says "I don't know" rather than confabulating from weak matches.
+- **Source-aware context assembly** — context split into PRIMARY DOCUMENTATION (readthedocs, python-chi) and SUPPLEMENTARY CONTEXT (blog) sections. System prompt instructs the model to ground answers in primary docs and use supplementary content only for examples and gap-filling.
+- **Source filtering** — index narrowed to readthedocs + tips-and-tricks blog only. Removed changelogs, forum, gitbook, chameleon.org static pages. Root `index.html` and pages with <500 chars of content excluded.
+- **Session logging** — every web app query logged to `session_log.jsonl` with question, sources, full context, answer, and latency.
+- **Retrieval diagnostic tools** — `explore.py` (per-question stage-by-stage breakdown with threshold simulation) and `retrieval_experiment.py` (cross-config benchmark across golden set using reranker score as proxy metric).
+- **Updated eval pipeline** — replaced semantic similarity scoring with retrieval diagnostics (reranker score stats, threshold coverage, source breakdown) + raw answers for manual quality assessment.
+- **Debug panel in web UI** — per-response expander showing reranker score summary by source type, ✅/⬜/❌ candidate breakdown, and full context sent to model.
 
 ---
 
-## In Progress
+## Next Priorities
 
-### Priority 2 — Cross-encoder reranker
-Tried `FlashrankRerank` (ms-marco-MiniLM-L-12-v2) from `langchain_community`. Removed — the model was trained on web search passages and actively mis-ranked technical documentation, producing noticeably worse answers. May be worth revisiting with a domain-appropriate model, but deprioritized for now.
+### 1 — Two-store architecture (docs + supplemental)
+Split the single FAISS index into a primary store (readthedocs, python-chi) and a supplemental store (curated blog posts, Trovi artifacts). Search each store independently, combine candidates, rerank together. This eliminates the numerical dominance of blog chunks over docs chunks in the shared similarity pool without requiring heuristic balancing.
 
-### Priority 3 — Hybrid search (BM25 + dense)
-Dense embeddings miss exact keyword matches (CLI flags, function names, model names). BM25 is strong for these. Merge both rankings with Reciprocal Rank Fusion via LangChain's `EnsembleRetriever`. Requires adding `rank_bm25` and persisting the BM25 index alongside FAISS. **Requires reindex.**
+Supplemental store curation criterion: only content that covers topics the documentation doesn't address, or that demonstrates a documented concept in action. Not re-explanations of things the docs already cover (these introduce outdated or inconsistent information).
 
-### Priority 4 — Contextual chunk headers
-Prepend each chunk with its source page title and section heading during indexing so the embedding captures document-level context. Improves retrieval precision for questions where the relevant chunk is ambiguous without its surrounding context. **Requires reindex.**
+### 2 — Trovi artifact integration
+Index Trovi artifact metadata (title, description, tags) as a separate lightweight store. After primary context is assembled, run a secondary lookup to surface a relevant artifact. Present artifacts as a companion UI element ("see it in action") rather than injecting them into model context — keeps the model's context clean while improving discoverability.
+
+### 3 — Documentation gap-filling
+Several recurring question types have no good answer in the current readthedocs corpus: CHI-in-a-Box overview, FPGA vs GPU comparison, acceptable use policy (crypto mining etc.), hardware site details. These gaps should be filled by writing short, focused documentation stubs added to the primary store — more durable and accurate than relying on blog posts.
+
+### 4 — Live Chameleon API integration (MCP server)
+A Model Context Protocol server wrapping the Chameleon REST APIs (Blazar reservations, hardware discovery, node availability). Lets the model answer dynamic questions like "what GPU nodes are available at CHI@UC right now?" by making live API calls with user credentials rather than retrieving from static docs. Architecturally distinct from the RAG pipeline — tool use rather than document retrieval. Requires thinking through the authentication flow.
 
 ---
 
-## Known Issues / Tech Debt
+## Known Issues
 
-**Indexing**
-- Forum indexing only fetches the `latest.json` endpoint (~30 topics). The full forum archive is not indexed.
-
-**Retrieval**
-- Parent chunk size (2000 chars) and child chunk size (400 chars) were chosen heuristically. No systematic tuning has been done. How-To and Troubleshooting categories are still below the original full-page baseline — chunk sizes may need adjustment per source type.
-- No similarity score threshold — weak MMR matches still proceed to context assembly. Adding a minimum score cutoff could reduce noise.
-- `max_per_type=2` diversity cap is a heuristic with no empirical basis.
-
-**Evaluation**
-- Semantic similarity (embedding cosine) is a proxy metric. It measures whether the generated answer is topically similar to the ground truth, but not faithfulness or correctness. LLM-as-judge scoring (e.g., rating factual accuracy, relevance, and completeness) would be more meaningful.
-- Golden set is only 20 questions — too small for statistically reliable category-level comparisons. Should be expanded, especially for underrepresented categories (Negative Question has only 1 example).
-- Eval run comparison is manual (CSV diff). No automated regression check that fails if mean score drops below a threshold.
+- **Latency** — reranker runs on CPU; fetch_k=100 takes ~13s per query. Experiment results (retrieval_experiment_20260425) show fetch_k=100 improves top1 score meaningfully vs fetch_k=50. GPU inference would make this practical.
+- **Documentation blind spots** — CHI-in-a-Box, FPGA/GPU comparison, acceptable use policy answers are missing from the readthedocs corpus. Currently answered from blog posts with lower reliability.
+- **`getting-started/index.html` over-matching** — this broad overview page appears in results for many unrelated questions. Consider excluding it from the index alongside the root `index.html`.
+- **Q&A vocabulary mismatch** — some questions use phrasing that doesn't appear in the docs (e.g., "Error 403 Forbidden" vs "source your openrc file"). The reranker partially compensates but retrieval misses remain for vocabulary-distant queries.
 
 ---
 
 ## Future Improvements
 
-- **Query expansion / HyDE** — generate a hypothetical answer to the question and embed that for retrieval, rather than embedding the raw question. Can improve recall for questions phrased differently from the documentation.
-- **Per-source-type chunking** — forum posts and blog posts have different structure than technical docs. Tuning chunk sizes and separators per source type could improve indexing quality.
-- **Index freshness** — detect when upstream documentation has changed and trigger incremental re-indexing, rather than requiring a full manual rebuild.
-- **Answer caching** — cache responses to common questions to reduce latency and API cost.
-- **Expanded golden set** — grow the evaluation set to 100+ questions with better category balance, including more edge cases (ambiguous questions, questions with no answer in the docs).
+- **Query expansion / HyDE** — embed a hypothetical answer rather than the raw question to improve recall for vocabulary-mismatched queries.
+- **Per-source-type chunk sizing** — blog posts and docs have different structure; tuning chunk sizes per source type may improve retrieval quality.
+- **Index freshness** — detect upstream documentation changes and trigger incremental re-indexing.
+- **Expanded evaluation set** — grow golden set to 100+ questions with better category balance; add LLM-as-judge scoring for factual accuracy rather than relying solely on manual review.
