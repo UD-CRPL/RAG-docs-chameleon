@@ -1,12 +1,14 @@
 import json
 import os
 import time
+import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
 from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH, MIN_RERANKER_SCORE
+from feedback_store import FeedbackStore, FeedbackRecord, hash_response, FAILURE_CATEGORIES
 
 LOG_PATH = os.path.join(os.path.dirname(__file__), "session_log.jsonl")
 
@@ -238,9 +240,9 @@ st.markdown(f"""
         <span><strong>Testing purposes only.</strong>
         This assistant is experimental and may produce inaccurate or incomplete answers.
         Always verify important information against the
-        <a href="https://chameleoncloud.readthedocs.io/en/latest/" target="_blank">official documentation</a>.</span>
+        <a href="https://chameleoncloud.readthedocs.io/en/latest/" target="_blank">official documentation</a>
+        or reach out to us at the <a href="https://chameleoncloud.org/user/help">Help Desk.</a></span>
     </div>
-    <a href="{FEEDBACK_FORM_URL}" target="_blank">Submit feedback →</a>
 </div>
 """, unsafe_allow_html=True)
 
@@ -262,6 +264,18 @@ if 'history' not in st.session_state:
 
 if 'pending_question' not in st.session_state:
     st.session_state.pending_question = ""
+
+if 'session_id' not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
+if 'feedback_state' not in st.session_state:
+    st.session_state.feedback_state = {}
+
+if 'feedback_store' not in st.session_state:
+    st.session_state.feedback_store = FeedbackStore()
+    # Pre-populate already-rated responses so the UI shows confirmation after a page refresh
+    rated = st.session_state.feedback_store.get_rated_hashes(st.session_state.session_id)
+    st.session_state._rated_hashes = rated
 
 
 EXAMPLES = [
@@ -333,13 +347,78 @@ def render_sources(sources: list[str]):
     )
 
 
+def render_feedback_ui(msg_index: int, entry: dict) -> None:
+    """Render thumbs-up/thumbs-down feedback UI for one assistant response.
+
+    State machine (st.session_state.feedback_state[msg_index]):
+      None / absent → show 👍 👎 buttons
+      'pending_neg'  → show failure-category form
+      'positive'     → show confirmation (locked)
+      'negative'     → show confirmation (locked)
+    """
+    store = st.session_state.feedback_store
+    response_hash = hash_response(entry["answer"])
+    state = st.session_state.feedback_state.get(msg_index)
+
+    # Recover confirmed state from DB if feedback_state was cleared by a page refresh
+    if state is None and response_hash in st.session_state.get("_rated_hashes", set()):
+        state = "positive"  # treat as confirmed; exact rating not needed for UI
+        st.session_state.feedback_state[msg_index] = state
+
+    if state in ("positive", "negative"):
+        st.caption("✓ Thanks for your feedback")
+        return
+
+    if state is None:
+        col1, col2, _ = st.columns([1, 1, 10])
+        with col1:
+            if st.button("👍", key=f"fb_pos_{msg_index}", help="Helpful"):
+                if not store.already_rated(response_hash, st.session_state.session_id):
+                    store.save(FeedbackRecord(
+                        session_id=st.session_state.session_id,
+                        question=entry["question"],
+                        response_hash=response_hash,
+                        rating="positive",
+                    ))
+                    st.session_state._rated_hashes.add(response_hash)
+                st.session_state.feedback_state[msg_index] = "positive"
+                st.rerun()
+        with col2:
+            if st.button("👎", key=f"fb_neg_{msg_index}", help="Not helpful"):
+                st.session_state.feedback_state[msg_index] = "pending_neg"
+                st.rerun()
+
+    elif state == "pending_neg":
+        with st.form(key=f"fb_form_{msg_index}"):
+            st.caption("What went wrong? (select all that apply)")
+            selected = st.multiselect(
+                "Categories",
+                FAILURE_CATEGORIES,
+                label_visibility="collapsed",
+            )
+            comment = st.text_area("Additional comments (optional)", height=80)
+            if st.form_submit_button("Submit feedback"):
+                if not store.already_rated(response_hash, st.session_state.session_id):
+                    store.save(FeedbackRecord(
+                        session_id=st.session_state.session_id,
+                        question=entry["question"],
+                        response_hash=response_hash,
+                        rating="negative",
+                        failure_categories=selected,
+                        comment=comment or None,
+                    ))
+                    st.session_state._rated_hashes.add(response_hash)
+                st.session_state.feedback_state[msg_index] = "negative"
+                st.rerun()
+
+
 # ── Empty state hero ──
 if not st.session_state.history:
     st.markdown("""
     <div class="cc-hero">
         <h1>Chameleon Docs Assistant</h1>
         <p>Ask anything about the Chameleon Cloud testbed — reservations, networking,<br>
-        disk images, hardware, Python CHI, and more.</p>
+        disk images, hardware, python-chi, and more.</p>
         <div class="cc-hero-label">Try asking</div>
     </div>
     """, unsafe_allow_html=True)
@@ -355,13 +434,14 @@ if not st.session_state.history:
 
 
 # ── Chat history ──
-for entry in st.session_state.history:
+for msg_index, entry in enumerate(st.session_state.history):
     with st.chat_message("user"):
         st.markdown(entry["question"])
     with st.chat_message("assistant"):
         st.markdown(entry["answer"])
         if entry["sources"]:
             render_sources(entry["sources"])
+        render_feedback_ui(msg_index, entry)
 
 
 # ── Input ──
@@ -398,6 +478,11 @@ if question:
 
         if seen_sources:
             render_sources(seen_sources)
+
+        render_feedback_ui(
+            len(st.session_state.history),  # index it will occupy after append
+            {"question": question, "answer": response_text, "sources": seen_sources},
+        )
 
         with st.expander("Retrieval debug"):
             n_total    = len(debug_candidates)

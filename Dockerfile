@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-large-en-v1.5')"
 
 # Copy application code
-COPY rag.py loader.py web_rag.py build_index.py ./
+COPY rag.py loader.py web_rag.py build_index.py feedback_store.py feedback_report.py ./
 
 # Vector store is mounted as a volume at runtime — not baked into the image
 VOLUME ["/app/vect_store"]
