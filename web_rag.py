@@ -25,8 +25,6 @@ def log_query(question: str, sources: list[str], context: str, answer: str, late
     with open(LOG_PATH, "a") as f:
         f.write(json.dumps(record) + "\n")
 
-FEEDBACK_FORM_URL = "https://forms.gle/YOUR_FORM_ID"
-
 st.set_page_config(
     page_title="Chameleon Docs Assistant",
     page_icon="https://chameleoncloud.org/static/images/favicon.ico",
@@ -467,14 +465,10 @@ if question:
             history_messages.append(HumanMessage(content=entry["question"]))
             history_messages.append(AIMessage(content=entry["answer"]))
 
-        def token_stream():
-            for chunk in st.session_state.chain.stream(
-                {"question": question, "context": context, "history": history_messages}
-            ):
-                if chunk.content:
-                    yield chunk.content
-
-        response_text = st.write_stream(token_stream())
+        response_text = st.session_state.chain.invoke(
+            {"question": question, "context": context, "history": history_messages}
+        ).content
+        st.markdown(response_text)
 
         if seen_sources:
             render_sources(seen_sources)
@@ -541,6 +535,5 @@ st.markdown(f"""
     Chameleon Docs Assistant &nbsp;·&nbsp;
     <a href="https://chameleoncloud.org" target="_blank">chameleoncloud.org</a>
     &nbsp;·&nbsp; Powered by <a href="https://ai.tejas.tacc.utexas.edu" target="_blank">Tejas AI</a>
-    &nbsp;·&nbsp; <a href="{FEEDBACK_FORM_URL}" target="_blank">Submit feedback</a>
 </div>
 """, unsafe_allow_html=True)
