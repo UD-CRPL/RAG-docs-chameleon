@@ -1,9 +1,30 @@
+import json
 import os
+import time
+import uuid
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 import streamlit as st
 from langchain_core.messages import HumanMessage, AIMessage
-from rag import load_vectorstore, load_pages, create_llm_chain, build_context, VECT_STORE_PATH
+from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH, MIN_RERANKER_SCORE
+from feedback_store import FeedbackStore, FeedbackRecord, hash_response, FAILURE_CATEGORIES
+
+LOG_PATH = os.environ.get("SESSION_LOG_PATH", os.path.join(os.path.dirname(__file__), "session_log.jsonl"))
+SHOW_DEBUG = False  # set to True to show retrieval debug panel
+
+
+def log_query(question: str, sources: list[str], context: str, answer: str, latency_s: float):
+    record = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "question": question,
+        "sources": sources,
+        "context": context,
+        "answer": answer,
+        "latency_s": round(latency_s, 2),
+    }
+    with open(LOG_PATH, "a") as f:
+        f.write(json.dumps(record) + "\n")
 
 st.set_page_config(
     page_title="Chameleon Docs Assistant",
@@ -154,6 +175,36 @@ st.markdown("""
         vertical-align: middle;
     }
 
+    /* ── Disclaimer banner ── */
+    .cc-disclaimer {
+        background: #fffbeb;
+        border-bottom: 1px solid #f6d860;
+        padding: 9px 28px;
+        font-size: 13px;
+        color: #78580a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .cc-disclaimer-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .cc-disclaimer-icon {
+        font-size: 15px;
+        flex-shrink: 0;
+    }
+    .cc-disclaimer a {
+        color: #b45309;
+        font-weight: 600;
+        text-decoration: underline;
+        white-space: nowrap;
+    }
+    .cc-disclaimer a:hover { color: #92400e; }
+
     /* ── Footer ── */
     .cc-footer {
         text-align: center;
@@ -176,30 +227,53 @@ st.markdown("""
         <a href="https://chameleoncloud.readthedocs.io/en/latest/" target="_blank">Docs</a>
         <a href="https://chameleoncloud.org/learn/frequently-asked-questions/" target="_blank">FAQ</a>
         <a href="https://chameleoncloud.org/user/help/" target="_blank">Help Desk</a>
-        <a href="https://www.chameleoncloud.org/login/" target="_blank">Login</a>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
-if not os.path.exists(VECT_STORE_PATH):
-    st.error("Vector store not found. Please run `python build_index.py` first to build the index.")
+st.markdown(f"""
+<div class="cc-disclaimer">
+    <div class="cc-disclaimer-text">
+        <span class="cc-disclaimer-icon">⚠️</span>
+        <span><strong>Testing purposes only.</strong>
+        This assistant is experimental and may produce inaccurate or incomplete answers.
+        Always verify important information against the
+        <a href="https://chameleoncloud.readthedocs.io/en/latest/" target="_blank">official documentation</a>
+        or reach out to us at the <a href="https://chameleoncloud.org/user/help">Help Desk.</a></span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+if not os.path.exists(os.path.join(VECT_STORE_PATH, "index.faiss")):
+    st.error("Vector store not found or incomplete. Please run `python build_index.py` first to build the index.")
     st.stop()
 
-if 'retriever' not in st.session_state:
+if 'vectorstore' not in st.session_state:
     with st.spinner("Loading index..."):
-        st.session_state.retriever = load_vectorstore()
+        st.session_state.vectorstore = load_vectorstore()
+        st.session_state.parents = load_parents()
 
 if 'chain' not in st.session_state:
     st.session_state.chain = create_llm_chain()
 
-if 'pages' not in st.session_state:
-    st.session_state.pages = load_pages()
 
 if 'history' not in st.session_state:
     st.session_state.history = []
 
 if 'pending_question' not in st.session_state:
     st.session_state.pending_question = ""
+
+if 'session_id' not in st.session_state:
+    st.session_state.session_id = str(uuid.uuid4())
+
+if 'feedback_state' not in st.session_state:
+    st.session_state.feedback_state = {}
+
+if 'feedback_store' not in st.session_state:
+    st.session_state.feedback_store = FeedbackStore()
+    # Pre-populate already-rated responses so the UI shows confirmation after a page refresh
+    rated = st.session_state.feedback_store.get_rated_hashes(st.session_state.session_id)
+    st.session_state._rated_hashes = rated
 
 
 EXAMPLES = [
@@ -271,13 +345,78 @@ def render_sources(sources: list[str]):
     )
 
 
+def render_feedback_ui(msg_index: int, entry: dict) -> None:
+    """Render thumbs-up/thumbs-down feedback UI for one assistant response.
+
+    State machine (st.session_state.feedback_state[msg_index]):
+      None / absent → show 👍 👎 buttons
+      'pending_neg'  → show failure-category form
+      'positive'     → show confirmation (locked)
+      'negative'     → show confirmation (locked)
+    """
+    store = st.session_state.feedback_store
+    response_hash = hash_response(entry["answer"])
+    state = st.session_state.feedback_state.get(msg_index)
+
+    # Recover confirmed state from DB if feedback_state was cleared by a page refresh
+    if state is None and response_hash in st.session_state.get("_rated_hashes", set()):
+        state = "positive"  # treat as confirmed; exact rating not needed for UI
+        st.session_state.feedback_state[msg_index] = state
+
+    if state in ("positive", "negative"):
+        st.caption("✓ Thanks for your feedback")
+        return
+
+    if state is None:
+        col1, col2, _ = st.columns([1, 1, 10])
+        with col1:
+            if st.button("👍", key=f"fb_pos_{msg_index}", help="Helpful"):
+                if not store.already_rated(response_hash, st.session_state.session_id):
+                    store.save(FeedbackRecord(
+                        session_id=st.session_state.session_id,
+                        question=entry["question"],
+                        response_hash=response_hash,
+                        rating="positive",
+                    ))
+                    st.session_state._rated_hashes.add(response_hash)
+                st.session_state.feedback_state[msg_index] = "positive"
+                st.rerun()
+        with col2:
+            if st.button("👎", key=f"fb_neg_{msg_index}", help="Not helpful"):
+                st.session_state.feedback_state[msg_index] = "pending_neg"
+                st.rerun()
+
+    elif state == "pending_neg":
+        with st.form(key=f"fb_form_{msg_index}"):
+            st.caption("What went wrong? (select all that apply)")
+            selected = st.multiselect(
+                "Categories",
+                FAILURE_CATEGORIES,
+                label_visibility="collapsed",
+            )
+            comment = st.text_area("Additional comments (optional)", height=80)
+            if st.form_submit_button("Submit feedback"):
+                if not store.already_rated(response_hash, st.session_state.session_id):
+                    store.save(FeedbackRecord(
+                        session_id=st.session_state.session_id,
+                        question=entry["question"],
+                        response_hash=response_hash,
+                        rating="negative",
+                        failure_categories=selected,
+                        comment=comment or None,
+                    ))
+                    st.session_state._rated_hashes.add(response_hash)
+                st.session_state.feedback_state[msg_index] = "negative"
+                st.rerun()
+
+
 # ── Empty state hero ──
 if not st.session_state.history:
     st.markdown("""
     <div class="cc-hero">
         <h1>Chameleon Docs Assistant</h1>
         <p>Ask anything about the Chameleon Cloud testbed — reservations, networking,<br>
-        disk images, hardware, Python CHI, and more.</p>
+        disk images, hardware, python-chi, and more.</p>
         <div class="cc-hero-label">Try asking</div>
     </div>
     """, unsafe_allow_html=True)
@@ -293,13 +432,14 @@ if not st.session_state.history:
 
 
 # ── Chat history ──
-for entry in st.session_state.history:
+for msg_index, entry in enumerate(st.session_state.history):
     with st.chat_message("user"):
         st.markdown(entry["question"])
     with st.chat_message("assistant"):
         st.markdown(entry["answer"])
         if entry["sources"]:
             render_sources(entry["sources"])
+        render_feedback_ui(msg_index, entry)
 
 
 # ── Input ──
@@ -315,8 +455,9 @@ if question:
         st.markdown(question)
 
     with st.chat_message("assistant"):
-        seen_sources, context = build_context(
-            question, st.session_state.retriever, st.session_state.pages
+        t0 = time.time()
+        seen_sources, context, debug_candidates = build_context(
+            question, st.session_state.vectorstore, st.session_state.parents
         )
 
         history_messages = []
@@ -324,17 +465,63 @@ if question:
             history_messages.append(HumanMessage(content=entry["question"]))
             history_messages.append(AIMessage(content=entry["answer"]))
 
-        def token_stream():
-            for chunk in st.session_state.chain.stream(
-                {"question": question, "context": context, "history": history_messages}
-            ):
-                if chunk.content:
-                    yield chunk.content
-
-        response_text = st.write_stream(token_stream())
+        response_text = st.session_state.chain.invoke(
+            {"question": question, "context": context, "history": history_messages}
+        ).content
+        st.markdown(response_text)
 
         if seen_sources:
             render_sources(seen_sources)
+
+        render_feedback_ui(
+            len(st.session_state.history),  # index it will occupy after append
+            {"question": question, "answer": response_text, "sources": seen_sources},
+        )
+
+        if SHOW_DEBUG:
+            with st.expander("Retrieval debug"):
+                n_total    = len(debug_candidates)
+                n_above    = sum(1 for c in debug_candidates if c["above_threshold"])
+                n_selected = sum(1 for c in debug_candidates if c["selected"])
+
+                # ── Reranker score summary by source type ──────────────────────
+                src_stats: dict[str, list] = {}
+                for c in debug_candidates:
+                    src = "Chameleon Docs" if ("readthedocs" in c["url"] or "python-chi" in c["url"]) else "Blog"
+                    src_stats.setdefault(src, []).append(c["score"])
+
+                st.markdown("**Reranker scores by source**")
+                for src, scores in sorted(src_stats.items()):
+                    avg = sum(scores) / len(scores)
+                    st.markdown(f"- **{src}**: n={len(scores)}  avg={avg:.3f}  top={max(scores):.3f}")
+
+                st.divider()
+
+                # ── Candidate list ──────────────────────────────────────────────
+                st.markdown(
+                    f"**{n_total} unique candidates → {n_above} above threshold → {n_selected} sent to model** "
+                    f"(threshold `{MIN_RERANKER_SCORE}`)"
+                )
+                st.caption("✅ sent to model · ⬜ above threshold, not selected · ❌ below threshold")
+                for c in debug_candidates:
+                    if c["selected"]:
+                        icon = "✅"
+                    elif c["above_threshold"]:
+                        icon = "⬜"
+                    else:
+                        icon = "❌"
+                    slug = c["url"].rstrip("/").split("/")[-1].replace(".html", "").replace("-", " ")
+                    with st.expander(f"{icon} `{c['score']:+.3f}` — {slug}", expanded=False):
+                        st.caption(c["url"])
+                        st.text(c["chunk"])
+
+                st.divider()
+
+                # ── Context sent to model ───────────────────────────────────────
+                st.markdown("**Context sent to model:**")
+                st.text_area("context", context, height=300, label_visibility="collapsed")
+
+    log_query(question, seen_sources, context, response_text, time.time() - t0)
 
     st.session_state.history.append({
         "question": question,
@@ -344,7 +531,7 @@ if question:
 
 
 # ── Footer ──
-st.markdown("""
+st.markdown(f"""
 <div class="cc-footer">
     Chameleon Docs Assistant &nbsp;·&nbsp;
     <a href="https://chameleoncloud.org" target="_blank">chameleoncloud.org</a>

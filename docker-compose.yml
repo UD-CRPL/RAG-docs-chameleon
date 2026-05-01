@@ -30,13 +30,41 @@ services:
        - "8501:8501"
     volumes:
       - vect_store:/app/vect_store
+      - fetch_cache:/app/_fetch_cache
+      - feedback_db:/app/feedback_data
+      - session_log:/app/session_log_data
+    environment:
+      FEEDBACK_DB_PATH: /app/feedback_data/feedback.db
+      SESSION_LOG_PATH: /app/session_log_data/session_log.jsonl
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.rag.rule=Host(`${HOST}`)"
       - "traefik.http.routers.rag.entrypoints=websecure"
       - "traefik.http.routers.rag.tls.certresolver=letsencrypt"
       - "traefik.http.services.rag.loadbalancer.server.port=8501"
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - vect_store/
+            - _fetch_cache/
+            - eval/
+            - feedback_data/
+            - "*.jsonl"
+            - "*.db"
+            - .env
+            - .git/
+        - action: rebuild
+          path: requirements.txt
+        - action: rebuild
+          path: Dockerfile
 
 volumes:
   vect_store:
+  fetch_cache:
   letsencrypt:
+  feedback_db:
+  session_log:
+    external: true

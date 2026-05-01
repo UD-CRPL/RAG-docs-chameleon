@@ -1,34 +1,51 @@
 """
-Run the current RAG pipeline against the golden question set and save outputs.
+Run the RAG pipeline against the golden question set and save results for manual review.
 
-Must be run inside the container (needs access to the vector store volume):
-    docker cp eval/run_pipeline.py rag-docs-chameleon-rag-app-1:/app/eval/run_pipeline.py
+Captures retrieval diagnostics (reranker scores, source breakdown, threshold behaviour)
+alongside the model's answer. No automatic scoring — answers are for human assessment.
+
+Run inside the container:
     docker exec rag-docs-chameleon-rag-app-1 python eval/run_pipeline.py
 
-Then copy results out:
+Copy results out:
     docker cp rag-docs-chameleon-rag-app-1:/app/eval/results/<run_file>.json eval/results/
 """
 import json
 import os
 import sys
 import time
+from collections import defaultdict
 from datetime import datetime
 
-# Run from /app inside the container
 sys.path.insert(0, "/app")
-from rag import load_vectorstore, create_llm_chain, load_pages, build_context, VECT_STORE_PATH
+from rag import load_vectorstore, load_parents, create_llm_chain, build_context, VECT_STORE_PATH, MIN_RERANKER_SCORE
 
 GOLDEN_SET_PATH = os.path.join(os.path.dirname(__file__), "golden_set.json")
 RESULTS_DIR     = os.path.join(os.path.dirname(__file__), "results")
 
 
-def run_question(question: str, retriever, chain, pages: dict) -> dict:
-    sources, context = build_context(question, retriever, pages)
-    response = chain.invoke({"question": question, "context": context, "history": []})
-    return {
-        "generated_answer": response.content,
-        "retrieved_sources": sources,
+def retrieval_stats(debug_candidates):
+    """Summarise reranker scores and source breakdown from debug_candidates."""
+    by_type = defaultdict(list)
+    for c in debug_candidates:
+        src = "readthedocs" if "readthedocs" in c["url"] else \
+              "blog"        if "blog.chameleon" in c["url"] else \
+              "other"
+        by_type[src].append(c["score"])
+
+    stats = {
+        "total_candidates": len(debug_candidates),
+        "passed_threshold": sum(1 for c in debug_candidates if c["selected"]),
+        "threshold_used":   MIN_RERANKER_SCORE,
+        "by_source": {},
     }
+    for src, scores in by_type.items():
+        stats["by_source"][src] = {
+            "n":         len(scores),
+            "avg_score": round(sum(scores) / len(scores), 3),
+            "top_score": round(max(scores), 3),
+        }
+    return stats
 
 
 def main():
@@ -36,9 +53,9 @@ def main():
         golden = json.load(f)
 
     print("Loading vector store and LLM chain...")
-    retriever = load_vectorstore(VECT_STORE_PATH)
-    chain     = create_llm_chain()
-    pages     = load_pages(VECT_STORE_PATH)
+    vectorstore = load_vectorstore(VECT_STORE_PATH)
+    parents     = load_parents(VECT_STORE_PATH)
+    chain       = create_llm_chain()
     print(f"Ready. Running {len(golden)} questions...\n")
 
     results = []
@@ -48,30 +65,39 @@ def main():
         print(f"  [{qid:02d}/{len(golden)}] {question[:70]}...")
         t0 = time.time()
         try:
-            output = run_question(question, retriever, chain, pages)
-            status = "ok"
+            sources, context, debug_candidates = build_context(question, vectorstore, parents)
+            response = chain.invoke({"question": question, "context": context, "history": []})
+            answer   = response.content
+            stats    = retrieval_stats(debug_candidates)
+            status   = "ok"
         except Exception as e:
-            output = {"generated_answer": "", "retrieved_sources": [], "num_chunks": 0}
-            status = f"error: {e}"
-        elapsed = time.time() - t0
+            sources, context, debug_candidates = [], "", []
+            answer, stats, status = "", {}, f"error: {e}"
+        elapsed = round(time.time() - t0, 2)
 
         results.append({
             "id":               qid,
             "category":         entry["category"],
             "question":         question,
-            "ground_truth":     entry["ground_truth"],
-            "generated_answer": output["generated_answer"],
-            "retrieved_sources": output["retrieved_sources"],
-            "latency_s":        round(elapsed, 2),
+            "answer":           answer,
+            "sources":          sources,
+            "retrieval":        stats,
+            "latency_s":        elapsed,
             "status":           status,
         })
-        print(f"         {elapsed:.1f}s  status={status}")
+
+        chunks_kept = stats.get("passed_threshold", 0)
+        breakdown   = "  ".join(
+            f"{t}:{v['n']}(top {v['top_score']:.2f})"
+            for t, v in stats.get("by_source", {}).items()
+        )
+        print(f"         {elapsed:.1f}s  kept={chunks_kept}/{stats.get('total_candidates', 0)}  {breakdown}")
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
     timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = os.path.join(RESULTS_DIR, f"run_{timestamp}.json")
     with open(output_path, "w") as f:
-        json.dump({"timestamp": timestamp, "results": results}, f, indent=2)
+        json.dump({"timestamp": timestamp, "threshold": MIN_RERANKER_SCORE, "results": results}, f, indent=2)
 
     ok = sum(1 for r in results if r["status"] == "ok")
     print(f"\nDone. {ok}/{len(results)} succeeded. Results saved to {output_path}")

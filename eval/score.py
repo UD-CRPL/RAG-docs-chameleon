@@ -7,33 +7,22 @@ Run locally after copying results out of the container:
 Optionally append scores to a CSV for comparison with prior runs:
     python eval/score.py eval/results/run_YYYYMMDD_HHMMSS.json --csv eval/results/scores.csv
 
-Similarity method: cosine similarity between E5-Mistral embeddings of the
-generated answer and the ground truth answer — uses the same model and API
-already in the project, so no new dependencies are needed.
+Similarity method: cosine similarity between BAAI/bge-large-en-v1.5 embeddings of the
+generated answer and the ground truth answer.
 """
 import argparse
 import csv
 import json
 import os
-import sys
-from datetime import datetime
 
 import numpy as np
-from dotenv import load_dotenv
-from openai import OpenAI
+from sentence_transformers import SentenceTransformer
 
-load_dotenv()
-
-TEJAS_API_BASE = "https://ai.tejas.tacc.utexas.edu/v1"
-TEJAS_API_KEY  = os.environ.get("TEJAS_API_KEY")
-EMBED_MODEL    = "E5-Mistral-7B-Instruct"
+_model = SentenceTransformer("BAAI/bge-large-en-v1.5")
 
 
-def get_embeddings(client: OpenAI, texts: list[str]) -> np.ndarray:
-    resp = client.embeddings.create(model=EMBED_MODEL, input=texts)
-    vecs = np.array([d.embedding for d in resp.data], dtype=np.float32)
-    norms = np.linalg.norm(vecs, axis=1, keepdims=True)
-    return vecs / np.maximum(norms, 1e-9)
+def get_embeddings(texts: list[str]) -> np.ndarray:
+    return _model.encode(texts, normalize_embeddings=True, convert_to_numpy=True)
 
 
 def cosine_sim(a: np.ndarray, b: np.ndarray) -> float:
@@ -47,8 +36,6 @@ def score_run(run_path: str, csv_path: str | None = None):
     results   = run["results"]
     timestamp = run["timestamp"]
 
-    client = OpenAI(api_key=TEJAS_API_KEY, base_url=TEJAS_API_BASE)
-
     print(f"Scoring {len(results)} results from {timestamp}...\n")
 
     # Batch embed all ground truths and generated answers in two calls
@@ -56,9 +43,9 @@ def score_run(run_path: str, csv_path: str | None = None):
     generated_answers = [r["generated_answer"] for r in results]
 
     print("  Embedding ground truths...")
-    gt_vecs  = get_embeddings(client, ground_truths)
+    gt_vecs  = get_embeddings(ground_truths)
     print("  Embedding generated answers...")
-    gen_vecs = get_embeddings(client, generated_answers)
+    gen_vecs = get_embeddings(generated_answers)
 
     scored = []
     for i, r in enumerate(results):
